@@ -18,7 +18,7 @@
 #ifndef KEEPASSXC_FDOSECRETSPLUGIN_H
 #define KEEPASSXC_FDOSECRETSPLUGIN_H
 
-#include "core/Resources.h"
+#include "core/FilePath.h"
 #include "gui/ApplicationSettingsWidget.h"
 
 #include <QPointer>
@@ -45,7 +45,7 @@ public:
 
     QIcon icon() override
     {
-        return Resources::instance()->icon("freedesktop");
+        return FilePath::instance()->icon("apps", "freedesktop");
     }
 
     QWidget* createWidget() override;
@@ -63,15 +63,6 @@ public:
      * @return The db tabs widget, containing opened databases. Can be nullptr.
      */
     DatabaseTabWidget* dbTabs() const;
-
-    /**
-     * Check the running secret service and returns info about it
-     * @return html string suitable to be shown in the UI
-     */
-    QString reportExistingService() const;
-
-    // TODO: Only used for testing. Need to split service functions away from settings page.
-    static FdoSecretsPlugin* getPlugin();
 
 public slots:
     void emitRequestSwitchToDatabases();

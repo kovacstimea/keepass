@@ -19,9 +19,6 @@
 #ifndef KEEAGENTSETTINGS_H
 #define KEEAGENTSETTINGS_H
 
-#include "core/Entry.h"
-#include "core/EntryAttachments.h"
-#include "crypto/ssh/OpenSSHKey.h"
 #include <QXmlStreamReader>
 #include <QtCore>
 
@@ -29,26 +26,13 @@ class KeeAgentSettings
 {
 public:
     KeeAgentSettings();
-    bool operator==(const KeeAgentSettings& other) const;
-    bool operator!=(const KeeAgentSettings& other) const;
-    bool isDefault() const;
-    void reset();
+
+    bool operator==(KeeAgentSettings& other);
+    bool operator!=(KeeAgentSettings& other);
+    bool isDefault();
 
     bool fromXml(const QByteArray& ba);
-    QByteArray toXml() const;
-
-    static bool inEntryAttachments(const EntryAttachments* attachments);
-    bool fromEntry(const Entry* entry);
-    void toEntry(Entry* entry) const;
-    bool keyConfigured() const;
-    bool toOpenSSHKey(const Entry* entry, OpenSSHKey& key, bool decrypt);
-    bool toOpenSSHKey(const QString& username,
-                      const QString& password,
-                      const EntryAttachments* attachments,
-                      OpenSSHKey& key,
-                      bool decrypt);
-
-    const QString errorString() const;
+    QByteArray toXml();
 
     bool allowUseOfSshKey() const;
     bool addAtDatabaseOpen() const;
@@ -61,7 +45,6 @@ public:
     const QString attachmentName() const;
     bool saveAttachmentToTempFile() const;
     const QString fileName() const;
-    const QString fileNameEnvSubst(QProcessEnvironment environment = QProcessEnvironment::systemEnvironment()) const;
 
     void setAllowUseOfSshKey(bool allowUseOfSshKey);
     void setAddAtDatabaseOpen(bool addAtDatabaseOpen);
@@ -91,7 +74,6 @@ private:
     QString m_attachmentName;
     bool m_saveAttachmentToTempFile;
     QString m_fileName;
-    QString m_error;
 };
 
 #endif // KEEAGENTSETTINGS_H

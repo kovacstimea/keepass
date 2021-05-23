@@ -60,7 +60,7 @@ bool CompositeKey::isEmpty() const
  */
 QByteArray CompositeKey::rawKey() const
 {
-    return rawKey(nullptr);
+    return rawKey(nullptr, nullptr);
 }
 
 /**
@@ -73,7 +73,7 @@ QByteArray CompositeKey::rawKey() const
  * @param ok true if challenges were successful and all key components could be added to the composite key
  * @return key hash
  */
-QByteArray CompositeKey::rawKey(const QByteArray* transformSeed, bool* ok, QString* error) const
+QByteArray CompositeKey::rawKey(const QByteArray* transformSeed, bool* ok) const
 {
     CryptoHash cryptoHash(CryptoHash::Sha256);
 
@@ -87,7 +87,7 @@ QByteArray CompositeKey::rawKey(const QByteArray* transformSeed, bool* ok, QStri
 
     if (transformSeed) {
         QByteArray challengeResult;
-        bool challengeOk = challenge(*transformSeed, challengeResult, error);
+        bool challengeOk = challenge(*transformSeed, challengeResult);
         if (ok) {
             *ok = challengeOk;
         }
@@ -110,7 +110,7 @@ QByteArray CompositeKey::rawKey(const QByteArray* transformSeed, bool* ok, QStri
  * @param result transformed key hash
  * @return true on success
  */
-bool CompositeKey::transform(const Kdf& kdf, QByteArray& result, QString* error) const
+bool CompositeKey::transform(const Kdf& kdf, QByteArray& result) const
 {
     if (kdf.uuid() == KeePass2::KDF_AES_KDBX3) {
         // legacy KDBX3 AES-KDF, challenge response is added later to the hash
@@ -120,10 +120,10 @@ bool CompositeKey::transform(const Kdf& kdf, QByteArray& result, QString* error)
     QByteArray seed = kdf.seed();
     Q_ASSERT(!seed.isEmpty());
     bool ok = false;
-    return kdf.transform(rawKey(&seed, &ok, error), result) && ok;
+    return kdf.transform(rawKey(&seed, &ok), result) && ok;
 }
 
-bool CompositeKey::challenge(const QByteArray& seed, QByteArray& result, QString* error) const
+bool CompositeKey::challenge(const QByteArray& seed, QByteArray& result) const
 {
     // if no challenge response was requested, return nothing to
     // maintain backwards compatibility with regular databases.
@@ -137,10 +137,7 @@ bool CompositeKey::challenge(const QByteArray& seed, QByteArray& result, QString
     for (const auto& key : m_challengeResponseKeys) {
         // if the device isn't present or fails, return an error
         if (!key->challenge(seed)) {
-            if (error) {
-                *error = key->error();
-            }
-            qWarning() << "Failed to issue challenge: " << key->error();
+            qWarning("Failed to issue challenge");
             return false;
         }
         cryptoHash.addData(key->rawKey());

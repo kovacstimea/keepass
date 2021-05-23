@@ -16,9 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "NativeMessagingProxy.h"
+#include "NativeMessagingHost.h"
 #include <QCoreApplication>
-
 #include <iostream>
 
 #ifndef Q_OS_WIN
@@ -80,6 +79,6 @@ int main(int argc, char* argv[])
 #else
     SetConsoleCtrlHandler(static_cast<PHANDLER_ROUTINE>(ConsoleHandler), TRUE);
 #endif
-    NativeMessagingProxy proxy;
+    NativeMessagingHost host;
     return a.exec();
 }

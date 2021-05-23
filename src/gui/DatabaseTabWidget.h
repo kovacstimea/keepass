@@ -68,21 +68,18 @@ public slots:
     void importOpVaultDatabase();
     bool saveDatabase(int index = -1);
     bool saveDatabaseAs(int index = -1);
-    bool saveDatabaseBackup(int index = -1);
     void exportToCsv();
     void exportToHtml();
 
-    bool lockDatabases();
+    void lockDatabases();
     void closeDatabaseFromSender();
     void unlockDatabaseInDialog(DatabaseWidget* dbWidget, DatabaseOpenDialog::Intent intent);
     void unlockDatabaseInDialog(DatabaseWidget* dbWidget, DatabaseOpenDialog::Intent intent, const QString& filePath);
     void relockPendingDatabase();
 
-    void showDatabaseSecurity();
-    void showDatabaseReports();
-    void showDatabaseSettings();
+    void changeMasterKey();
+    void changeDatabaseSettings();
     void performGlobalAutoType();
-    void performBrowserUnlock();
 
 signals:
     void databaseOpened(DatabaseWidget* dbWidget);
@@ -91,7 +88,6 @@ signals:
     void databaseLocked(DatabaseWidget* dbWidget);
     void activateDatabaseChanged(DatabaseWidget* dbWidget);
     void tabNameChanged();
-    void tabVisibilityChanged(bool tabsVisible);
     void messageGlobal(const QString&, MessageWidget::MessageType type);
     void messageDismissGlobal();
     void databaseUnlockDialogFinished(bool accepted, DatabaseWidget* dbWidget);
@@ -108,7 +104,7 @@ private:
 
     QPointer<DatabaseWidgetStateSync> m_dbWidgetStateSync;
     QPointer<DatabaseWidget> m_dbWidgetPendingLock;
-    QPointer<DatabaseOpenDialog> m_databaseOpenDialog;
+    QScopedPointer<DatabaseOpenDialog> m_databaseOpenDialog;
 };
 
 #endif // KEEPASSX_DATABASETABWIDGET_H

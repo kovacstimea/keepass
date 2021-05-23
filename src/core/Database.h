@@ -21,7 +21,6 @@
 
 #include <QDateTime>
 #include <QHash>
-#include <QMutex>
 #include <QPointer>
 #include <QScopedPointer>
 #include <QTimer>
@@ -81,12 +80,11 @@ public:
     void releaseData();
 
     bool isInitialized() const;
+    void setInitialized(bool initialized);
     bool isModified() const;
-    bool hasNonDataChanges() const;
     void setEmitModified(bool value);
     bool isReadOnly() const;
     void setReadOnly(bool readOnly);
-    bool isSaving();
 
     QUuid uuid() const;
     QString filePath() const;
@@ -115,14 +113,15 @@ public:
 
     QList<QString> commonUsernames();
 
+    bool hasKey() const;
     QSharedPointer<const CompositeKey> key() const;
     bool setKey(const QSharedPointer<const CompositeKey>& key,
                 bool updateChangedTime = true,
                 bool updateTransformSalt = false,
                 bool transformKey = true);
-    QString keyError();
     QByteArray challengeResponseKey() const;
     bool challengeMasterSeed(const QByteArray& masterSeed);
+    bool verifyKey(const QSharedPointer<CompositeKey>& key) const;
     const QUuid& cipher() const;
     void setCipher(const QUuid& cipher);
     Database::CompressionAlgorithm compressionAlgorithm() const;
@@ -131,7 +130,7 @@ public:
     QSharedPointer<Kdf> kdf() const;
     void setKdf(QSharedPointer<Kdf> kdf);
     bool changeKdf(const QSharedPointer<Kdf>& kdf);
-    QByteArray transformedDatabaseKey() const;
+    QByteArray transformedMasterKey() const;
 
     static Database* databaseByUuid(const QUuid& uuid);
 
@@ -139,7 +138,6 @@ public slots:
     void markAsModified();
     void markAsClean();
     void updateCommonUsernames(int topN = 10);
-    void markNonDataChange();
 
 signals:
     void filePathChanged(const QString& oldPath, const QString& newPath);
@@ -165,9 +163,10 @@ private:
         CompressionAlgorithm compressionAlgorithm = CompressionGZip;
 
         QScopedPointer<PasswordKey> masterSeed;
-        QScopedPointer<PasswordKey> transformedDatabaseKey;
+        QScopedPointer<PasswordKey> transformedMasterKey;
         QScopedPointer<PasswordKey> challengeResponseKey;
 
+        bool hasKey = false;
         QSharedPointer<const CompositeKey> key;
         QSharedPointer<Kdf> kdf = QSharedPointer<AesKdf>::create(true);
 
@@ -175,7 +174,7 @@ private:
 
         DatabaseData()
             : masterSeed(new PasswordKey())
-            , transformedDatabaseKey(new PasswordKey())
+            , transformedMasterKey(new PasswordKey())
             , challengeResponseKey(new PasswordKey())
         {
             kdf->randomizeSeed();
@@ -186,9 +185,10 @@ private:
             filePath.clear();
 
             masterSeed.reset();
-            transformedDatabaseKey.reset();
+            transformedMasterKey.reset();
             challengeResponseKey.reset();
 
+            hasKey = false;
             key.reset();
             kdf.reset();
 
@@ -208,12 +208,10 @@ private:
     QPointer<Group> m_rootGroup;
     QList<DeletedObject> m_deletedObjects;
     QTimer m_modifiedTimer;
-    QMutex m_saveMutex;
     QPointer<FileWatcher> m_fileWatcher;
+    bool m_initialized = false;
     bool m_modified = false;
     bool m_emitModified;
-    bool m_hasNonDataChange = false;
-    QString m_keyError;
 
     QList<QString> m_commonUsernames;
 

@@ -53,15 +53,15 @@ bool Kdbx4Writer::writeDatabase(QIODevice* device, Database* db)
     QByteArray endOfHeader = "\r\n\r\n";
 
     if (!db->setKey(db->key(), false, true)) {
-        raiseError(tr("Unable to calculate database key: %1").arg(db->keyError()));
+        raiseError(tr("Unable to calculate master key"));
         return false;
     }
 
-    // generate transformed database key
+    // generate transformed master key
     CryptoHash hash(CryptoHash::Sha256);
     hash.addData(masterSeed);
-    Q_ASSERT(!db->transformedDatabaseKey().isEmpty());
-    hash.addData(db->transformedDatabaseKey());
+    Q_ASSERT(!db->transformedMasterKey().isEmpty());
+    hash.addData(db->transformedMasterKey());
     QByteArray finalKey = hash.result();
 
     // write header
@@ -109,7 +109,7 @@ bool Kdbx4Writer::writeDatabase(QIODevice* device, Database* db)
     QByteArray headerHash = CryptoHash::hash(headerData, CryptoHash::Sha256);
 
     // write HMAC-authenticated cipher stream
-    QByteArray hmacKey = KeePass2::hmacKey(masterSeed, db->transformedDatabaseKey());
+    QByteArray hmacKey = KeePass2::hmacKey(masterSeed, db->transformedMasterKey());
     QByteArray headerHmac =
         CryptoHash::hmac(headerData, HmacBlockStream::getHmacKey(UINT64_MAX, hmacKey), CryptoHash::Sha256);
     CHECK_RETURN_FALSE(writeData(device, headerHash));

@@ -66,21 +66,19 @@ Database* OpVaultReader::readDatabase(QDir& opdataDir, const QString& password)
         return nullptr;
     }
 
-    auto vaultName = opdataDir.dirName();
-
     auto key = QSharedPointer<CompositeKey>::create();
     key->addKey(QSharedPointer<PasswordKey>::create(password));
 
     QScopedPointer<Database> db(new Database());
-    db->setKdf(KeePass2::uuidToKdf(KeePass2::KDF_ARGON2D));
+    db->setKdf(KeePass2::uuidToKdf(KeePass2::KDF_ARGON2));
     db->setCipher(KeePass2::CIPHER_AES256);
     db->setKey(key, true, false);
-    db->metadata()->setName(vaultName);
+    db->metadata()->setName(opdataDir.dirName());
 
     auto rootGroup = db->rootGroup();
     rootGroup->setTimeInfo({});
     rootGroup->setUpdateTimeinfo(false);
-    rootGroup->setName(vaultName.remove(".opvault"));
+    rootGroup->setName("OPVault Root Group");
     rootGroup->setUuid(QUuid::createUuid());
 
     populateCategoryGroups(rootGroup);
@@ -112,6 +110,7 @@ Database* OpVaultReader::readDatabase(QDir& opdataDir, const QString& password)
     for (QChar ch : bandChars) {
         QFile bandFile(defaultDir.filePath(bandPattern.arg(ch)));
         if (!bandFile.exists()) {
+            qWarning() << "Skipping missing file \"" << bandFile.fileName() << "\"";
             continue;
         }
         // https://support.1password.com/opvault-design/#band-files
@@ -138,17 +137,10 @@ Database* OpVaultReader::readDatabase(QDir& opdataDir, const QString& password)
                 continue;
             }
             // https://support.1password.com/opvault-design/#items
-            auto entry = processBandEntry(bandEnt, defaultDir, rootGroup);
+            Entry* entry = processBandEntry(bandEnt, defaultDir, rootGroup);
             if (!entry) {
                 qWarning() << "Unable to process Band Entry " << uuid;
             }
-        }
-    }
-
-    // Remove empty categories (groups)
-    for (auto group : rootGroup->children()) {
-        if (group->isEmpty()) {
-            delete group;
         }
     }
 

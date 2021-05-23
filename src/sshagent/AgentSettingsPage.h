@@ -25,8 +25,8 @@
 class AgentSettingsPage : public ISettingsPage
 {
 public:
-    AgentSettingsPage() = default;
-    ~AgentSettingsPage() override = default;
+    AgentSettingsPage(DatabaseTabWidget* tabWidget);
+    ~AgentSettingsPage() override;
 
     QString name() override;
     QIcon icon() override;

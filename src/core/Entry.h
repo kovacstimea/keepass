@@ -19,6 +19,7 @@
 #ifndef KEEPASSX_ENTRY_H
 #define KEEPASSX_ENTRY_H
 
+#include <QColor>
 #include <QImage>
 #include <QMap>
 #include <QPixmap>
@@ -31,7 +32,6 @@
 #include "core/CustomData.h"
 #include "core/EntryAttachments.h"
 #include "core/EntryAttributes.h"
-#include "core/Global.h"
 #include "core/TimeInfo.h"
 
 class Database;
@@ -57,8 +57,8 @@ struct EntryData
 {
     int iconNumber;
     QUuid customIcon;
-    QString foregroundColor;
-    QString backgroundColor;
+    QColor foregroundColor;
+    QColor backgroundColor;
     QString overrideUrl;
     QString tags;
     bool autoTypeEnabled;
@@ -82,11 +82,12 @@ public:
     const QUuid& uuid() const;
     const QString uuidToHex() const;
     QImage icon() const;
-    QPixmap iconPixmap(IconSize size = IconSize::Default) const;
+    QPixmap iconPixmap() const;
+    QPixmap iconScaledPixmap() const;
     int iconNumber() const;
     const QUuid& iconUuid() const;
-    QString foregroundColor() const;
-    QString backgroundColor() const;
+    QColor foregroundColor() const;
+    QColor backgroundColor() const;
     QString overrideUrl() const;
     QString tags() const;
     const TimeInfo& timeInfo() const;
@@ -106,9 +107,7 @@ public:
     QString notes() const;
     QString attribute(const QString& key) const;
     QString totp() const;
-    QString totpSettingsString() const;
     QSharedPointer<Totp::Settings> totpSettings() const;
-    int size() const;
 
     bool hasTotp() const;
     bool isExpired() const;
@@ -125,11 +124,16 @@ public:
     CustomData* customData();
     const CustomData* customData() const;
 
+    static const int DefaultIconNumber;
+    static const int ResolveMaximumDepth;
+    static const QString AutoTypeSequenceUsername;
+    static const QString AutoTypeSequencePassword;
+
     void setUuid(const QUuid& uuid);
     void setIcon(int iconNumber);
     void setIcon(const QUuid& uuid);
-    void setForegroundColor(const QString& color);
-    void setBackgroundColor(const QString& color);
+    void setForegroundColor(const QColor& color);
+    void setBackgroundColor(const QColor& color);
     void setOverrideUrl(const QString& url);
     void setTags(const QString& tags);
     void setTimeInfo(const TimeInfo& timeInfo);
@@ -160,8 +164,6 @@ public:
         CloneNewUuid = 1, // generate a random uuid for the clone
         CloneResetTimeInfo = 2, // set all TimeInfo attributes to the current time
         CloneIncludeHistory = 4, // clone the history items
-        CloneDefault = CloneNewUuid | CloneResetTimeInfo,
-        CloneCopy = CloneNewUuid | CloneResetTimeInfo | CloneIncludeHistory,
         CloneRenameTitle = 8, // add "-Clone" after the original title
         CloneUserAsRef = 16, // Add the user as a reference to the original entry
         ClonePassAsRef = 32, // Add the password as a reference to the original entry
@@ -189,28 +191,8 @@ public:
         UrlUserName,
         UrlPassword,
         Reference,
-        CustomAttribute,
-        DateTimeSimple,
-        DateTimeYear,
-        DateTimeMonth,
-        DateTimeDay,
-        DateTimeHour,
-        DateTimeMinute,
-        DateTimeSecond,
-        DateTimeUtcSimple,
-        DateTimeUtcYear,
-        DateTimeUtcMonth,
-        DateTimeUtcDay,
-        DateTimeUtcHour,
-        DateTimeUtcMinute,
-        DateTimeUtcSecond,
-        DbDir
+        CustomAttribute
     };
-
-    static const int DefaultIconNumber;
-    static const int ResolveMaximumDepth;
-    static const QString AutoTypeSequenceUsername;
-    static const QString AutoTypeSequencePassword;
 
     /**
      * Creates a duplicate of this entry except that the returned entry isn't
@@ -218,14 +200,13 @@ public:
      * Note that you need to copy the custom icons manually when inserting the
      * new entry into another database.
      */
-    Entry* clone(CloneFlags flags = CloneDefault) const;
+    Entry* clone(CloneFlags flags) const;
     void copyDataFrom(const Entry* other);
     QString maskPasswordPlaceholders(const QString& str) const;
     Entry* resolveReference(const QString& str) const;
     QString resolveMultiplePlaceholders(const QString& str) const;
     QString resolvePlaceholder(const QString& str) const;
     QString resolveUrlPlaceholder(const QString& str, PlaceholderType placeholderType) const;
-    QString resolveDateTimePlaceholder(PlaceholderType placeholderType) const;
     PlaceholderType placeholderType(const QString& placeholder) const;
     QString resolveUrl(const QString& url) const;
 
@@ -235,9 +216,6 @@ public:
      */
     void beginUpdate();
     bool endUpdate();
-
-    void moveUp();
-    void moveDown();
 
     Group* group();
     const Group* group() const;

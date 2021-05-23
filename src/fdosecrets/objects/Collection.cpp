@@ -75,8 +75,6 @@ namespace FdoSecrets
             m_registered = false;
         }
 
-        Q_ASSERT(m_backend);
-
         // make sure we have updated copy of the filepath, which is used to identify the database.
         m_backendPath = m_backend->database()->filePath();
 
@@ -247,11 +245,19 @@ namespace FdoSecrets
 
         QList<EntrySearcher::SearchTerm> terms;
         for (auto it = attributes.constBegin(); it != attributes.constEnd(); ++it) {
+            if (it.key() == EntryAttributes::PasswordKey) {
+                continue;
+            }
             terms << attributeToTerm(it.key(), it.value());
         }
 
+        // empty terms causes EntrySearcher returns everything
+        if (terms.isEmpty()) {
+            return QList<Item*>{};
+        }
+
         QList<Item*> items;
-        const auto foundEntries = EntrySearcher(false, true).search(terms, m_exposedGroup);
+        const auto foundEntries = EntrySearcher().search(terms, m_exposedGroup);
         items.reserve(foundEntries.size());
         for (const auto& entry : foundEntries) {
             items << m_entryToItem.value(entry);
@@ -304,13 +310,13 @@ namespace FdoSecrets
         QString itemPath;
         StringStringMap attributes;
 
+        // check existing item using attributes
         auto iterAttr = properties.find(QStringLiteral(DBUS_INTERFACE_SECRET_ITEM ".Attributes"));
         if (iterAttr != properties.end()) {
-            attributes = iterAttr.value().value<StringStringMap>();
+            attributes = qdbus_cast<StringStringMap>(iterAttr.value().value<QDBusArgument>());
 
             itemPath = attributes.value(ItemAttributes::PathKey);
 
-            // check existing item using attributes
             auto existings = searchItems(attributes);
             if (existings.isError()) {
                 return existings;
@@ -434,16 +440,6 @@ namespace FdoSecrets
 
     QString Collection::name() const
     {
-        if (m_backendPath.isEmpty()) {
-            // This is a newly created db without saving to file.
-            // This name is also used to register dbus path.
-            // For simplicity, we don't monitor the name change.
-            // So the dbus object path is not updated if the db name
-            // changes. This should not be a problem because once the database
-            // gets saved, the dbus path will be updated to use filename and
-            // everything back to normal.
-            return m_backend->database()->metadata()->name();
-        }
         return QFileInfo(m_backendPath).baseName();
     }
 
@@ -490,6 +486,7 @@ namespace FdoSecrets
         // When the group object is normally deleted due to ~Database, the databaseReplaced
         // signal should be first emitted, and we will clean up connection in reloadDatabase,
         // so this handler won't be triggered.
+        QPointer<Database> db = m_backend->database().data();
         connect(m_exposedGroup.data(), &Group::groupAboutToRemove, this, [this](Group* toBeRemoved) {
             if (backendLocked()) {
                 return;
@@ -547,9 +544,8 @@ namespace FdoSecrets
         }
 
         // repopulate
-        if (!backendLocked()) {
-            populateContents();
-        }
+        Q_ASSERT(!backendLocked());
+        populateContents();
     }
 
     void Collection::onEntryAdded(Entry* entry, bool emitSignal)
@@ -602,11 +598,11 @@ namespace FdoSecrets
         return qobject_cast<Service*>(parent());
     }
 
-    bool Collection::doLock()
+    void Collection::doLock()
     {
         Q_ASSERT(m_backend);
 
-        return m_backend->lock();
+        m_backend->lock();
     }
 
     void Collection::doUnlock()
@@ -618,11 +614,6 @@ namespace FdoSecrets
 
     void Collection::doDelete()
     {
-        if (!m_backend) {
-            // I'm already deleted
-            return;
-        }
-
         emit collectionAboutToDelete();
 
         unregisterCurrentPath();
@@ -632,11 +623,7 @@ namespace FdoSecrets
             removeAlias(a).okOrDie();
         }
 
-        // cleanup connection on Database
         cleanupConnections();
-        // cleanup connection on Backend itself
-        m_backend->disconnect(this);
-        parent()->disconnect(this);
 
         m_exposedGroup = nullptr;
 

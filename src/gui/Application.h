@@ -31,8 +31,6 @@ class OSEventFilter;
 class QLockFile;
 class QSocketNotifier;
 
-constexpr int RESTART_EXITCODE = -1;
-
 class Application : public QApplication
 {
     Q_OBJECT
@@ -41,15 +39,10 @@ public:
     Application(int& argc, char** argv);
     ~Application() override;
 
-    void applyTheme();
-
     bool event(QEvent* event) override;
     bool isAlreadyRunning() const;
-    bool isDarkTheme() const;
 
     bool sendFileNamesToRunningInstance(const QStringList& fileNames);
-
-    void restart();
 
 signals:
     void openFile(const QString& filename);
@@ -75,7 +68,6 @@ private:
     static int unixSignalSocket[2];
 #endif
     bool m_alreadyRunning;
-    bool m_darkTheme = false;
     QLockFile* m_lockFile;
     QLocalServer m_lockServer;
     QString m_socketName;
@@ -83,7 +75,5 @@ private:
     QScopedPointer<OSEventFilter> m_osEventFilter;
 #endif
 };
-
-#define kpxcApp qobject_cast<Application*>(Application::instance())
 
 #endif // KEEPASSX_APPLICATION_H

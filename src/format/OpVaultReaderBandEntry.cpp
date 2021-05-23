@@ -27,7 +27,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QScopedPointer>
 #include <QUuid>
 
 bool OpVaultReader::decryptBandEntry(const QJsonObject& bandEntry,
@@ -113,12 +112,9 @@ Entry* OpVaultReader::processBandEntry(const QJsonObject& bandEntry, const QDir&
         return nullptr;
     }
 
-    QScopedPointer<Entry> entry(new Entry());
+    const auto entry = new Entry();
 
-    if (bandEntry.contains("trashed") && bandEntry["trashed"].toBool()) {
-        // Send this entry to the recycle bin
-        rootGroup->database()->recycleEntry(entry.data());
-    } else if (bandEntry.contains("category")) {
+    if (bandEntry.contains("category")) {
         const QJsonValue& categoryValue = bandEntry["category"];
         if (categoryValue.isString()) {
             bool found = false;
@@ -166,7 +162,8 @@ Entry* OpVaultReader::processBandEntry(const QJsonObject& bandEntry, const QDir&
     }
     entry->setUuid(Tools::hexToUuid(uuid));
 
-    if (!fillAttributes(entry.data(), bandEntry)) {
+    if (!fillAttributes(entry, bandEntry)) {
+        delete entry;
         return nullptr;
     }
 
@@ -187,7 +184,7 @@ Entry* OpVaultReader::processBandEntry(const QJsonObject& bandEntry, const QDir&
         entry->setPassword(data.value("password").toString());
     }
 
-    for (const auto fieldValue : data.value("fields").toArray()) {
+    for (const auto& fieldValue : data.value("fields").toArray()) {
         if (!fieldValue.isObject()) {
             continue;
         }
@@ -211,11 +208,11 @@ Entry* OpVaultReader::processBandEntry(const QJsonObject& bandEntry, const QDir&
         }
         const QJsonObject& section = sectionValue.toObject();
 
-        fillFromSection(entry.data(), section);
+        fillFromSection(entry, section);
     }
 
-    fillAttachments(entry.data(), attachmentDir, entryKey, entryHmacKey);
-    return entry.take();
+    fillAttachments(entry, attachmentDir, entryKey, entryHmacKey);
+    return entry;
 }
 
 bool OpVaultReader::fillAttributes(Entry* entry, const QJsonObject& bandEntry)
@@ -228,9 +225,9 @@ bool OpVaultReader::fillAttributes(Entry* entry, const QJsonObject& bandEntry)
         return false;
     }
 
-    auto overviewJsonBytes = entOver01.getClearText();
-    auto overviewDoc = QJsonDocument::fromJson(overviewJsonBytes);
-    auto overviewJson = overviewDoc.object();
+    QByteArray overviewJsonBytes = entOver01.getClearText();
+    QJsonDocument overviewDoc = QJsonDocument::fromJson(overviewJsonBytes);
+    QJsonObject overviewJson = overviewDoc.object();
 
     QString title = overviewJson.value("title").toString();
     entry->setTitle(title);
@@ -239,20 +236,26 @@ bool OpVaultReader::fillAttributes(Entry* entry, const QJsonObject& bandEntry)
     entry->setUrl(url);
 
     int i = 1;
-    for (const auto urlV : overviewJson["URLs"].toArray()) {
-        const auto& urlObj = urlV.toObject();
-        if (urlObj.contains("u")) {
-            auto newUrl = urlObj["u"].toString();
-            if (newUrl != url) {
-                // Add this url if it isn't the base one
-                entry->attributes()->set(QString("KP2A_URL_%1").arg(i), newUrl);
-                ++i;
+    for (const auto& urlV : overviewJson["URLs"].toArray()) {
+        auto urlName = QString("URL_%1").arg(i);
+        auto urlValue = urlV.toString();
+        if (urlV.isObject()) {
+            const auto& urlObj = urlV.toObject();
+            if (urlObj["l"].isString() && urlObj["u"].isString()) {
+                urlName = urlObj["l"].toString();
+                urlValue = urlObj["u"].toString();
+            } else {
+                continue;
             }
+        }
+        if (!urlValue.isEmpty() && urlValue != url) {
+            entry->attributes()->set(urlName, urlValue);
+            ++i;
         }
     }
 
     QStringList tagsList;
-    for (const auto tagV : overviewJson["tags"].toArray()) {
+    for (const auto& tagV : overviewJson["tags"].toArray()) {
         if (tagV.isString()) {
             tagsList << tagV.toString();
         }

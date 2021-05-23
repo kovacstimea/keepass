@@ -37,13 +37,15 @@ Remove::Remove()
 
 int Remove::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT;
-    auto& err = Utils::STDERR;
-
+    bool quiet = parser->isSet(Command::QuietOption);
     auto& entryPath = parser->positionalArguments().at(1);
+
+    TextStream outputTextStream(quiet ? Utils::DEVNULL : Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
+
     QPointer<Entry> entry = database->rootGroup()->findEntryByPath(entryPath);
     if (!entry) {
-        err << QObject::tr("Entry %1 not found.").arg(entryPath) << endl;
+        errorTextStream << QObject::tr("Entry %1 not found.").arg(entryPath) << endl;
         return EXIT_FAILURE;
     }
 
@@ -59,14 +61,14 @@ int Remove::executeWithDatabase(QSharedPointer<Database> database, QSharedPointe
 
     QString errorMessage;
     if (!database->save(&errorMessage, true, false)) {
-        err << QObject::tr("Unable to save database to file: %1").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Unable to save database to file: %1").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
     if (recycled) {
-        out << QObject::tr("Successfully recycled entry %1.").arg(entryTitle) << endl;
+        outputTextStream << QObject::tr("Successfully recycled entry %1.").arg(entryTitle) << endl;
     } else {
-        out << QObject::tr("Successfully deleted entry %1.").arg(entryTitle) << endl;
+        outputTextStream << QObject::tr("Successfully deleted entry %1.").arg(entryTitle) << endl;
     }
 
     return EXIT_SUCCESS;

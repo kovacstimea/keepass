@@ -38,10 +38,9 @@ GroupView::GroupView(Database* db, QWidget* parent)
     // clang-format off
     connect(this, SIGNAL(expanded(QModelIndex)), SLOT(expandedChanged(QModelIndex)));
     connect(this, SIGNAL(collapsed(QModelIndex)), SLOT(expandedChanged(QModelIndex)));
-    connect(this, SIGNAL(clicked(QModelIndex)), SIGNAL(groupSelectionChanged()));
     connect(m_model, SIGNAL(rowsInserted(QModelIndex,int,int)), SLOT(syncExpandedState(QModelIndex,int,int)));
     connect(m_model, SIGNAL(modelReset()), SLOT(modelReset()));
-    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SIGNAL(groupSelectionChanged()));
+    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SLOT(emitGroupChanged()));
     // clang-format on
 
     new QShortcut(Qt::CTRL + Qt::Key_F10, this, SLOT(contextMenuShortcutPressed()), nullptr, Qt::WidgetShortcut);
@@ -86,7 +85,7 @@ void GroupView::dragMoveEvent(QDragMoveEvent* event)
 
 void GroupView::focusInEvent(QFocusEvent* event)
 {
-    emit groupFocused();
+    emitGroupChanged();
     QTreeView::focusInEvent(event);
 }
 
@@ -141,6 +140,11 @@ void GroupView::setModel(QAbstractItemModel* model)
     Q_ASSERT(false);
 }
 
+void GroupView::emitGroupChanged()
+{
+    emit groupSelectionChanged(currentGroup());
+}
+
 void GroupView::syncExpandedState(const QModelIndex& parent, int start, int end)
 {
     for (int row = start; row <= end; row++) {
@@ -151,11 +155,10 @@ void GroupView::syncExpandedState(const QModelIndex& parent, int start, int end)
 
 void GroupView::setCurrentGroup(Group* group)
 {
-    if (group == nullptr) {
+    if (group == nullptr)
         setCurrentIndex(QModelIndex());
-    } else {
+    else
         setCurrentIndex(m_model->index(group));
-    }
 }
 
 void GroupView::modelReset()

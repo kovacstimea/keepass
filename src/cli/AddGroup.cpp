@@ -39,8 +39,8 @@ AddGroup::~AddGroup()
 
 int AddGroup::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = Utils::STDOUT;
-    auto& err = Utils::STDERR;
+    TextStream outputTextStream(Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     const QStringList args = parser->positionalArguments();
     const QString& groupPath = args.at(1);
@@ -51,13 +51,13 @@ int AddGroup::executeWithDatabase(QSharedPointer<Database> database, QSharedPoin
 
     Group* group = database->rootGroup()->findGroupByPath(groupPath);
     if (group) {
-        err << QObject::tr("Group %1 already exists!").arg(groupPath) << endl;
+        errorTextStream << QObject::tr("Group %1 already exists!").arg(groupPath) << endl;
         return EXIT_FAILURE;
     }
 
     Group* parentGroup = database->rootGroup()->findGroupByPath(parentGroupPath);
     if (!parentGroup) {
-        err << QObject::tr("Group %1 not found.").arg(parentGroupPath) << endl;
+        errorTextStream << QObject::tr("Group %1 not found.").arg(parentGroupPath) << endl;
         return EXIT_FAILURE;
     }
 
@@ -68,12 +68,12 @@ int AddGroup::executeWithDatabase(QSharedPointer<Database> database, QSharedPoin
 
     QString errorMessage;
     if (!database->save(&errorMessage, true, false)) {
-        err << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
     if (!parser->isSet(Command::QuietOption)) {
-        out << QObject::tr("Successfully added group %1.").arg(groupName) << endl;
+        outputTextStream << QObject::tr("Successfully added group %1.").arg(groupName) << endl;
     }
     return EXIT_SUCCESS;
 }

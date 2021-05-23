@@ -77,7 +77,8 @@ protected:
     {
         Q_ASSERT(static_cast<unsigned long>(data.size()) < (1ull << (sizeof(SizedQInt) * 8)));
 
-        QByteArray fieldIdArr(1, static_cast<char>(fieldId));
+        QByteArray fieldIdArr;
+        fieldIdArr[0] = static_cast<char>(fieldId);
         CHECK_RETURN_FALSE(writeData(device, fieldIdArr));
         CHECK_RETURN_FALSE(writeData(
             device, Endian::sizedIntToBytes<SizedQInt>(static_cast<SizedQInt>(data.size()), KeePass2::BYTEORDER)));

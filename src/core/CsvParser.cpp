@@ -67,17 +67,15 @@ bool CsvParser::parse(QFile* device)
         appendStatusMsg(QObject::tr("NULL device"), true);
         return false;
     }
-    if (!readFile(device)) {
+    if (!readFile(device))
         return false;
-    }
     return parseFile();
 }
 
 bool CsvParser::readFile(QFile* device)
 {
-    if (device->isOpen()) {
+    if (device->isOpen())
         device->close();
-    }
 
     device->open(QIODevice::ReadOnly);
     if (!Tools::readAllFromDevice(device, m_array)) {
@@ -88,9 +86,8 @@ bool CsvParser::readFile(QFile* device)
 
         m_array.replace("\r\n", "\n");
         m_array.replace("\r", "\n");
-        if (0 == m_array.size()) {
+        if (0 == m_array.size())
             appendStatusMsg(QObject::tr("file empty").append("\n"));
-        }
         m_isFileLoaded = true;
     }
     return m_isFileLoaded;
@@ -127,9 +124,8 @@ bool CsvParser::parseFile()
 {
     parseRecord();
     while (!m_isEof) {
-        if (!skipEndline()) {
+        if (!skipEndline())
             appendStatusMsg(QObject::tr("malformed string"), true);
-        }
         m_currRow++;
         m_currCol = 1;
         parseRecord();
@@ -150,17 +146,15 @@ void CsvParser::parseRecord()
         getChar(m_ch);
     } while (isSeparator(m_ch) && !m_isEof);
 
-    if (!m_isEof) {
+    if (!m_isEof)
         ungetChar();
-    }
     if (isEmptyRow(row)) {
         row.clear();
         return;
     }
     m_table.push_back(row);
-    if (m_maxCols < row.size()) {
+    if (m_maxCols < row.size())
         m_maxCols = row.size();
-    }
     m_currCol++;
 }
 
@@ -169,11 +163,10 @@ void CsvParser::parseField(CsvRow& row)
     QString field;
     peek(m_ch);
     if (!isTerminator(m_ch)) {
-        if (isQualifier(m_ch)) {
+        if (isQualifier(m_ch))
             parseQuoted(field);
-        } else {
+        else
             parseSimple(field);
-        }
     }
     row.push_back(field);
 }
@@ -186,9 +179,8 @@ void CsvParser::parseSimple(QString& s)
         s.append(c);
         getChar(c);
     }
-    if (!m_isEof) {
+    if (!m_isEof)
         ungetChar();
-    }
 }
 
 void CsvParser::parseQuoted(QString& s)
@@ -197,20 +189,17 @@ void CsvParser::parseQuoted(QString& s)
     getChar(m_ch);
     parseEscaped(s);
     // getChar(m_ch);
-    if (!isQualifier(m_ch)) {
+    if (!isQualifier(m_ch))
         appendStatusMsg(QObject::tr("missing closing quote"), true);
-    }
 }
 
 void CsvParser::parseEscaped(QString& s)
 {
     parseEscapedText(s);
-    while (processEscapeMark(s, m_ch)) {
+    while (processEscapeMark(s, m_ch))
         parseEscapedText(s);
-    }
-    if (!m_isEof) {
+    if (!m_isEof)
         ungetChar();
-    }
 }
 
 void CsvParser::parseEscapedText(QString& s)
@@ -244,9 +233,8 @@ bool CsvParser::processEscapeMark(QString& s, QChar c)
         }
     } else {
         // double quote syntax, e.g. ""
-        if (!isQualifier(c)) {
+        if (!isQualifier(c))
             return false;
-        }
         peek(c2);
         if (!m_isEof) { // not EOF, can read one char
             if (isQualifier(c2)) {
@@ -306,18 +294,16 @@ void CsvParser::ungetChar()
 void CsvParser::peek(QChar& c)
 {
     getChar(c);
-    if (!m_isEof) {
+    if (!m_isEof)
         ungetChar();
-    }
 }
 
 bool CsvParser::isQualifier(const QChar& c) const
 {
-    if (true == m_isBackslashSyntax && (c != m_qualifier)) {
+    if (true == m_isBackslashSyntax && (c != m_qualifier))
         return (c == '\\');
-    } else {
+    else
         return (c == m_qualifier);
-    }
 }
 
 bool CsvParser::isComment()
@@ -326,13 +312,12 @@ bool CsvParser::isComment()
     QChar c2;
     qint64 pos = m_ts.pos();
 
-    do {
+    do
         getChar(c2);
-    } while ((isSpace(c2) || isTab(c2)) && (!m_isEof));
+    while ((isSpace(c2) || isTab(c2)) && (!m_isEof));
 
-    if (c2 == m_comment) {
+    if (c2 == m_comment)
         result = true;
-    }
     m_ts.seek(pos);
     return result;
 }
@@ -345,11 +330,9 @@ bool CsvParser::isText(QChar c) const
 bool CsvParser::isEmptyRow(const CsvRow& row) const
 {
     CsvRow::const_iterator it = row.constBegin();
-    for (; it != row.constEnd(); ++it) {
-        if (((*it) != "\n") && ((*it) != "")) {
+    for (; it != row.constEnd(); ++it)
+        if (((*it) != "\n") && ((*it) != ""))
             return false;
-        }
-    }
     return true;
 }
 

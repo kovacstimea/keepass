@@ -56,9 +56,8 @@ QString ElidedLabel::url() const
 
 void ElidedLabel::setElideMode(Qt::TextElideMode elideMode)
 {
-    if (m_elideMode == elideMode) {
+    if (m_elideMode == elideMode)
         return;
-    }
 
     if (m_elideMode != Qt::ElideNone) {
         setWordWrap(false);
@@ -70,9 +69,8 @@ void ElidedLabel::setElideMode(Qt::TextElideMode elideMode)
 
 void ElidedLabel::setRawText(const QString& elidedText)
 {
-    if (m_rawText == elidedText) {
+    if (m_rawText == elidedText)
         return;
-    }
 
     m_rawText = elidedText;
     emit rawTextChanged(m_rawText);
@@ -80,9 +78,8 @@ void ElidedLabel::setRawText(const QString& elidedText)
 
 void ElidedLabel::setUrl(const QString& url)
 {
-    if (m_url == url) {
+    if (m_url == url)
         return;
-    }
 
     m_url = url;
     emit urlChanged(m_url);

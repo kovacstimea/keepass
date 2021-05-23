@@ -20,8 +20,6 @@
 
 #include "DatabaseSettingsWidget.h"
 
-#include "crypto/kdf/Kdf.h"
-
 #include <QPointer>
 #include <QScopedPointer>
 
@@ -51,13 +49,11 @@ public slots:
     void uninitialize() override;
     bool save() override;
 
-    static QString getTextualEncryptionTime(int millisecs);
-
 protected:
     void showEvent(QShowEvent* event) override;
 
 private slots:
-    void benchmarkTransformRounds(int millisecs = Kdf::DEFAULT_ENCRYPTION_TIME);
+    void benchmarkTransformRounds(int millisecs = 1000);
     void changeKdf(int index);
     void memoryChanged(int value);
     void parallelismChanged(int value);

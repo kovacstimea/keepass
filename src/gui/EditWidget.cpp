@@ -22,7 +22,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 
-#include "core/Resources.h"
+#include "core/FilePath.h"
 
 EditWidget::EditWidget(QWidget* parent)
     : DialogyWidget(parent)
@@ -59,45 +59,18 @@ void EditWidget::addPage(const QString& labelText, const QIcon& icon, QWidget* w
      * from automatic resizing and it now should be able to fit into a user's monitor even if the monitor is only 768
      * pixels high.
      */
-    if (widget->inherits("QScrollArea")) {
-        m_ui->stackedWidget->addWidget(widget);
-    } else {
-        auto* scrollArea = new QScrollArea(m_ui->stackedWidget);
-        scrollArea->setFrameShape(QFrame::NoFrame);
-        scrollArea->setFrameShadow(QFrame::Plain);
-        scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        scrollArea->setSizeAdjustPolicy(QScrollArea::AdjustToContents);
-        scrollArea->setWidgetResizable(true);
-        scrollArea->setWidget(widget);
-        m_ui->stackedWidget->addWidget(scrollArea);
-    }
+    auto* scrollArea = new QScrollArea(m_ui->stackedWidget);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setWidget(widget);
+    scrollArea->setWidgetResizable(true);
+    m_ui->stackedWidget->addWidget(scrollArea);
     m_ui->categoryList->addCategory(labelText, icon);
-}
-
-bool EditWidget::hasPage(QWidget* widget)
-{
-    for (int i = 0; i < m_ui->stackedWidget->count(); i++) {
-        auto* scrollArea = qobject_cast<QScrollArea*>(m_ui->stackedWidget->widget(i));
-        if (scrollArea && scrollArea->widget() == widget) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void EditWidget::setPageHidden(QWidget* widget, bool hidden)
 {
-    int index = -1;
-
-    for (int i = 0; i < m_ui->stackedWidget->count(); i++) {
-        auto* scrollArea = qobject_cast<QScrollArea*>(m_ui->stackedWidget->widget(i));
-        if (scrollArea && scrollArea->widget() == widget) {
-            index = i;
-            break;
-        }
-    }
-
+    int index = m_ui->stackedWidget->indexOf(widget);
     if (index != -1) {
         m_ui->categoryList->setCategoryHidden(index, hidden);
     }

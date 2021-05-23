@@ -57,7 +57,8 @@ int DatabaseCommand::execute(const QStringList& arguments)
 #else
                                    "",
 #endif
-                                   parser->isSet(Command::QuietOption));
+                                   parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT,
+                                   Utils::STDERR);
         if (!db) {
             return EXIT_FAILURE;
         }

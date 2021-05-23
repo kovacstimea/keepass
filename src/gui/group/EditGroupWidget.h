@@ -20,7 +20,6 @@
 
 #include <QComboBox>
 #include <QScopedPointer>
-#include <QScrollArea>
 
 #include "core/Group.h"
 #include "gui/EditWidget.h"
@@ -79,7 +78,7 @@ private:
 
     const QScopedPointer<Ui::EditGroupWidgetMain> m_mainUi;
 
-    QPointer<QScrollArea> m_editGroupWidgetMain;
+    QPointer<QWidget> m_editGroupWidgetMain;
     QPointer<EditWidgetIcons> m_editGroupWidgetIcons;
     QPointer<EditWidgetProperties> m_editWidgetProperties;
 

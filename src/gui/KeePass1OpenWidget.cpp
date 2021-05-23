@@ -37,10 +37,14 @@ void KeePass1OpenWidget::openDatabase()
     KeePass1Reader reader;
 
     QString password;
-    QString keyFileName = m_ui->keyFileLineEdit->text();
+    QString keyFileName;
 
     if (!m_ui->editPassword->text().isEmpty() || m_retryUnlockWithEmptyPassword) {
         password = m_ui->editPassword->text();
+    }
+
+    if (!m_ui->comboKeyFile->currentText().isEmpty() && m_ui->comboKeyFile->currentData() != -1) {
+        keyFileName = m_ui->comboKeyFile->currentText();
     }
 
     QFile file(m_filename);

@@ -38,11 +38,11 @@ public:
     void sortGroups(bool reverse = false);
 
 signals:
-    void groupSelectionChanged();
-    void groupFocused();
+    void groupSelectionChanged(Group* group);
 
 private slots:
     void expandedChanged(const QModelIndex& index);
+    void emitGroupChanged();
     void syncExpandedState(const QModelIndex& parent, int start, int end);
     void modelReset();
     void contextMenuShortcutPressed();

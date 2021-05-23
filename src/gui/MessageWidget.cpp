@@ -36,11 +36,6 @@ MessageWidget::MessageWidget(QWidget* parent)
     connect(this, SIGNAL(hideAnimationFinished()), m_autoHideTimer, SLOT(stop()));
 }
 
-void MessageWidget::setAnimate(bool state)
-{
-    m_animate = state;
-}
-
 int MessageWidget::autoHideTimeout() const
 {
     return m_autoHideTimeout;
@@ -55,15 +50,8 @@ void MessageWidget::showMessage(const QString& text, KMessageWidget::MessageType
 {
     setMessageType(type);
     setText(text);
-
     emit showAnimationStarted();
-    if (m_animate) {
-        animatedShow();
-    } else {
-        show();
-        emit showAnimationFinished();
-    }
-
+    animatedShow();
     if (autoHideTimeout > 0) {
         m_autoHideTimer->start(autoHideTimeout);
     } else {
@@ -73,14 +61,7 @@ void MessageWidget::showMessage(const QString& text, KMessageWidget::MessageType
 
 void MessageWidget::hideMessage()
 {
-    emit hideAnimationStarted();
-    if (m_animate) {
-        animatedHide();
-    } else {
-        hide();
-        emit hideAnimationFinished();
-    }
-
+    animatedHide();
     m_autoHideTimer->stop();
 }
 

@@ -40,8 +40,8 @@ Move::~Move()
 
 int Move::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = Utils::STDOUT;
-    auto& err = Utils::STDERR;
+    TextStream outputTextStream(Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     const QStringList args = parser->positionalArguments();
     const QString& entryPath = args.at(1);
@@ -49,18 +49,18 @@ int Move::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<
 
     Entry* entry = database->rootGroup()->findEntryByPath(entryPath);
     if (!entry) {
-        err << QObject::tr("Could not find entry with path %1.").arg(entryPath) << endl;
+        errorTextStream << QObject::tr("Could not find entry with path %1.").arg(entryPath) << endl;
         return EXIT_FAILURE;
     }
 
     Group* destinationGroup = database->rootGroup()->findGroupByPath(destinationPath);
     if (!destinationGroup) {
-        err << QObject::tr("Could not find group with path %1.").arg(destinationPath) << endl;
+        errorTextStream << QObject::tr("Could not find group with path %1.").arg(destinationPath) << endl;
         return EXIT_FAILURE;
     }
 
     if (destinationGroup == entry->parent()) {
-        err << QObject::tr("Entry is already in group %1.").arg(destinationPath) << endl;
+        errorTextStream << QObject::tr("Entry is already in group %1.").arg(destinationPath) << endl;
         return EXIT_FAILURE;
     }
 
@@ -70,10 +70,11 @@ int Move::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<
 
     QString errorMessage;
     if (!database->save(&errorMessage, true, false)) {
-        err << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
-    out << QObject::tr("Successfully moved entry %1 to group %2.").arg(entry->title(), destinationPath) << endl;
+    outputTextStream << QObject::tr("Successfully moved entry %1 to group %2.").arg(entry->title(), destinationPath)
+                     << endl;
     return EXIT_SUCCESS;
 }

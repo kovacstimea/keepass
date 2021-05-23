@@ -21,7 +21,6 @@
 #include <QMap>
 #include <QUuid>
 
-#include "core/Config.h"
 #include "gui/MessageWidget.h"
 #include "keeshare/KeeShareSettings.h"
 
@@ -71,7 +70,7 @@ signals:
     void sharingMessage(QString, MessageWidget::MessageType);
 
 private slots:
-    void handleSettingsChanged(Config::ConfigKey key);
+    void handleSettingsChanged(const QString&);
 
 private:
     static KeeShare* m_instance;

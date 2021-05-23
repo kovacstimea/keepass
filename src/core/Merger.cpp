@@ -612,11 +612,12 @@ Merger::ChangeList Merger::mergeMetadata(const MergeContext& context)
     auto* sourceMetadata = context.m_sourceDb->metadata();
     auto* targetMetadata = context.m_targetDb->metadata();
 
-    for (const auto& iconUuid : sourceMetadata->customIconsOrder()) {
-        if (!targetMetadata->hasCustomIcon(iconUuid)) {
-            QImage customIcon = sourceMetadata->customIcon(iconUuid);
-            targetMetadata->addCustomIcon(iconUuid, customIcon);
-            changes << tr("Adding missing icon %1").arg(QString::fromLatin1(iconUuid.toRfc4122().toHex()));
+    const auto keys = sourceMetadata->customIcons().keys();
+    for (QUuid customIconId : keys) {
+        if (!targetMetadata->containsCustomIcon(customIconId)) {
+            QImage customIcon = sourceMetadata->customIcon(customIconId);
+            targetMetadata->addCustomIcon(customIconId, customIcon);
+            changes << tr("Adding missing icon %1").arg(QString::fromLatin1(customIconId.toRfc4122().toHex()));
         }
     }
 
@@ -631,9 +632,7 @@ Merger::ChangeList Merger::mergeMetadata(const MergeContext& context)
 
         // Check missing keys from source. Remove those from target
         for (const auto& key : targetCustomDataKeys) {
-            // Do not remove protected custom data
-            if (!sourceMetadata->customData()->contains(key)
-                && !sourceMetadata->customData()->isProtectedCustomData(key)) {
+            if (!sourceMetadata->customData()->contains(key)) {
                 auto value = targetMetadata->customData()->value(key);
                 targetMetadata->customData()->remove(key);
                 changes << tr("Removed custom data %1 [%2]").arg(key, value);

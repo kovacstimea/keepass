@@ -20,7 +20,6 @@
 #define KEEPASSX_DATABASEOPENWIDGET_H
 
 #include <QScopedPointer>
-#include <QTimer>
 
 #include "gui/DialogyWidget.h"
 #include "keys/CompositeKey.h"
@@ -41,10 +40,12 @@ public:
     explicit DatabaseOpenWidget(QWidget* parent = nullptr);
     ~DatabaseOpenWidget();
     void load(const QString& filename);
-    QString filename();
     void clearForms();
     void enterKey(const QString& pw, const QString& keyFile);
     QSharedPointer<Database> database();
+
+public slots:
+    void pollYubikey();
 
 signals:
     void dialogFinished(bool accepted);
@@ -52,12 +53,7 @@ signals:
 protected:
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;
-    QSharedPointer<CompositeKey> buildDatabaseKey();
-
-    const QScopedPointer<Ui::DatabaseOpenWidget> m_ui;
-    QSharedPointer<Database> m_db;
-    QString m_filename;
-    bool m_retryUnlockWithEmptyPassword = false;
+    QSharedPointer<CompositeKey> databaseKey();
 
 protected slots:
     virtual void openDatabase();
@@ -65,16 +61,24 @@ protected slots:
 
 private slots:
     void browseKeyFile();
-    void clearKeyFileText();
-    void pollHardwareKey();
-    void hardwareKeyResponse(bool found);
+    void clearKeyFileEdit();
+    void handleKeyFileComboEdited();
+    void handleKeyFileComboChanged();
+    void yubikeyDetected(int slot, bool blocking);
+    void yubikeyDetectComplete();
+    void noYubikeyFound();
     void openHardwareKeyHelp();
     void openKeyFileHelp();
 
-private:
-    bool m_pollingHardwareKey = false;
-    QTimer m_hideTimer;
+protected:
+    const QScopedPointer<Ui::DatabaseOpenWidget> m_ui;
+    QSharedPointer<Database> m_db;
+    QString m_filename;
+    bool m_retryUnlockWithEmptyPassword = false;
 
+private:
+    bool m_yubiKeyBeingPolled = false;
+    bool m_keyFileComboEdited = false;
     Q_DISABLE_COPY(DatabaseOpenWidget)
 };
 

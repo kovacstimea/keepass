@@ -50,7 +50,6 @@ private slots:
 
 private:
     void fetchFavicon(const QUrl& url);
-    QImage parseImage(QByteArray& imageBytes) const;
 
     QString m_url;
     QUrl m_fetchUrl;

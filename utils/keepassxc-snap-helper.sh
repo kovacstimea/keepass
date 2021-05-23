@@ -18,45 +18,48 @@
 
 set -e
 
+DEBUG=false
+
+JSON_BASE=$(cat << EOF
+{
+    "name": "org.keepassxc.keepassxc_browser",
+    "description": "KeePassXC integration with native messaging support",
+    "path": "/snap/bin/keepassxc.proxy",
+    "type": "stdio",
+    __EXT__
+}
+EOF
+)
+
+JSON_FIREFOX=$(cat << EOF
+"allowed_extensions": [
+        "keepassxc-browser@keepassxc.org"
+    ]
+EOF
+)
+
+JSON_CHROME=$(cat << EOF
+"allowed_origins": [
+        "chrome-extension://iopaggbpplllidnfmcghoonnokmjoicf/",
+        "chrome-extension://oboonakemofpalcgghocfoadofidjkkk/"
+    ]
+EOF
+)
+
 JSON_OUT=""
 BASE_DIR="."
 INSTALL_DIR=""
 INSTALL_FILE="org.keepassxc.keepassxc_browser.json"
 
-# Early out if the keepassxc.proxy executable cannot be found
-if ! command -v keepassxc.proxy; then
-    echo "Could not find keepassxc.proxy! Ensure the keepassxc snap is installed properly."
-    exit 0
-fi
-
-PROXY_PATH=$(command -v keepassxc.proxy)
-
-JSON_FIREFOX=$(cat << EOF
-{
-    "name": "org.keepassxc.keepassxc_browser",
-    "description": "KeePassXC integration with native messaging support",
-    "path": "${PROXY_PATH}",
-    "type": "stdio",
-    "allowed_extensions": [
-        "keepassxc-browser@keepassxc.org"
-    ]
+buildJson() {
+    if [[ ! -z $1 ]]; then
+        # Insert Firefox data
+        JSON_OUT="${JSON_BASE/__EXT__/$JSON_FIREFOX}"
+    else
+        # Insert Chrome data
+        JSON_OUT="${JSON_BASE/__EXT__/$JSON_CHROME}"
+    fi
 }
-EOF
-)
-
-JSON_CHROME=$(cat << EOF
-{
-    "name": "org.keepassxc.keepassxc_browser",
-    "description": "KeePassXC integration with native messaging support",
-    "path": "${PROXY_PATH}",
-    "type": "stdio",
-    "allowed_origins": [
-        "chrome-extension://iopaggbpplllidnfmcghoonnokmjoicf/",
-        "chrome-extension://oboonakemofpalcgghocfoadofidjkkk/"
-    ]
-}
-EOF
-)
 
 askBrowserSnap() {
     if (whiptail --title "Snap Choice" --defaultno \
@@ -69,33 +72,33 @@ askBrowserSnap() {
 
 setupFirefox() {
     askBrowserSnap "./snap/firefox/common"
-    JSON_OUT=${JSON_FIREFOX}
+    buildJson "firefox"
     INSTALL_DIR="${BASE_DIR}/.mozilla/native-messaging-hosts"
 }
 
 setupChrome() {
-    JSON_OUT=${JSON_CHROME}
+    buildJson
     INSTALL_DIR="${BASE_DIR}/.config/google-chrome/NativeMessagingHosts"
 }
 
 setupChromium() {
     askBrowserSnap "./snap/chromium/current"
-    JSON_OUT=${JSON_CHROME}
+    buildJson
     INSTALL_DIR="${BASE_DIR}/.config/chromium/NativeMessagingHosts"
 }
 
 setupVivaldi() {
-    JSON_OUT=${JSON_CHROME}
+    buildJson
     INSTALL_DIR="${BASE_DIR}/.config/vivaldi/NativeMessagingHosts"
 }
 
 setupBrave() {
-    JSON_OUT=${JSON_CHROME}
+    buildJson
     INSTALL_DIR="${BASE_DIR}/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
 }
 
 setupTorBrowser() {
-    JSON_OUT=${JSON_FIREFOX}
+    buildJson "firefox"
     INSTALL_DIR="${BASE_DIR}/.tor-browser/app/Browser/TorBrowser/Data/Browser/.mozilla/native-messaging-hosts"
 }
 
@@ -133,6 +136,8 @@ if [ $exitstatus = 0 ]; then
     cd ~
     mkdir -p "$INSTALL_DIR"
     echo "$JSON_OUT" > ${INSTALL_DIR}/${INSTALL_FILE}
+
+    $DEBUG && echo "Installed to: ${INSTALL_DIR}/${INSTALL_FILE}"
 
     whiptail \
         --title "Installation Complete" \

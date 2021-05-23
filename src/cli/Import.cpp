@@ -55,47 +55,46 @@ int Import::execute(const QStringList& arguments)
         return EXIT_FAILURE;
     }
 
-    auto& out = parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT;
-    auto& err = Utils::STDERR;
+    TextStream outputTextStream(parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT,
+                                QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     const QStringList args = parser->positionalArguments();
     const QString& xmlExportPath = args.at(0);
     const QString& dbPath = args.at(1);
 
     if (QFileInfo::exists(dbPath)) {
-        err << QObject::tr("File %1 already exists.").arg(dbPath) << endl;
+        errorTextStream << QObject::tr("File %1 already exists.").arg(dbPath) << endl;
         return EXIT_FAILURE;
     }
 
     auto key = QSharedPointer<CompositeKey>::create();
 
-    auto passwordKey = Utils::getConfirmedPassword();
-    if (passwordKey.isNull()) {
-        err << QObject::tr("Failed to set database password.") << endl;
-        return EXIT_FAILURE;
+    auto password = Utils::getPasswordFromStdin();
+    if (!password.isNull()) {
+        key->addKey(password);
     }
-    key->addKey(passwordKey);
 
     if (key->isEmpty()) {
-        err << QObject::tr("No key is set. Aborting database creation.") << endl;
+        errorTextStream << QObject::tr("No key is set. Aborting database creation.") << endl;
         return EXIT_FAILURE;
     }
 
     QString errorMessage;
     Database db;
-    db.setKdf(KeePass2::uuidToKdf(KeePass2::KDF_ARGON2D));
+    db.setKdf(KeePass2::uuidToKdf(KeePass2::KDF_ARGON2));
     db.setKey(key);
 
     if (!db.import(xmlExportPath, &errorMessage)) {
-        err << QObject::tr("Unable to import XML database: %1").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Unable to import XML database export %1").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
     if (!db.saveAs(dbPath, &errorMessage, true, false)) {
-        err << QObject::tr("Failed to save the database: %1.").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Failed to save the database: %1.").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
-    out << QObject::tr("Successfully imported database.") << endl;
+    outputTextStream << QObject::tr("Successfully imported database.") << endl;
     return EXIT_SUCCESS;
 }

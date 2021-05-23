@@ -20,10 +20,7 @@
 
 #include "core/Global.h"
 
-const QString CustomData::LastModified = QStringLiteral("_LAST_MODIFIED");
-const QString CustomData::Created = QStringLiteral("_CREATED");
-const QString CustomData::BrowserKeyPrefix = QStringLiteral("KPXC_BROWSER_");
-const QString CustomData::BrowserLegacyKeyPrefix = QStringLiteral("Public Key: ");
+const QString CustomData::LastModified = "_LAST_MODIFIED";
 
 CustomData::CustomData(QObject* parent)
     : QObject(parent)
@@ -128,11 +125,6 @@ QDateTime CustomData::getLastModified() const
         return Clock::parse(m_data.value(LastModified));
     }
     return {};
-}
-
-bool CustomData::isProtectedCustomData(const QString& key) const
-{
-    return key.startsWith(CustomData::BrowserKeyPrefix) || key.startsWith(CustomData::Created);
 }
 
 bool CustomData::operator==(const CustomData& other) const

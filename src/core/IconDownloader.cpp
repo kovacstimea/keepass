@@ -20,7 +20,6 @@
 #include "core/NetworkManager.h"
 
 #include <QHostInfo>
-#include <QImageReader>
 #include <QtNetwork>
 
 #define MAX_REDIRECTS 5
@@ -104,7 +103,7 @@ void IconDownloader::setUrl(const QString& entryUrl)
     }
 
     // Start with the "fallback" url (if enabled) to try to get the best favicon
-    if (config()->get(Config::Security_IconDownloadFallback).toBool()) {
+    if (config()->get("security/IconDownloadFallback", false).toBool()) {
         QUrl fallbackUrl = QUrl("https://icons.duckduckgo.com");
         fallbackUrl.setPath("/ip3/" + QUrl::toPercentEncoding(fullyQualifiedDomain) + ".ico");
         m_urlsToTry.append(fallbackUrl);
@@ -127,12 +126,8 @@ void IconDownloader::setUrl(const QString& entryUrl)
 
 void IconDownloader::download()
 {
-    if (m_urlsToTry.isEmpty()) {
-        return;
-    }
-
     if (!m_timeout.isActive()) {
-        int timeout = config()->get(Config::FaviconDownloadTimeout).toInt();
+        int timeout = config()->get("FaviconDownloadTimeout", 10).toInt();
         m_timeout.start(timeout * 1000);
 
         // Use the first URL to start the download process
@@ -189,7 +184,7 @@ void IconDownloader::fetchFinished()
             }
         } else {
             // No redirect, and we theoretically have some icon data now.
-            image = parseImage(m_bytesReceived);
+            image.loadFromData(m_bytesReceived);
         }
     }
 
@@ -206,34 +201,4 @@ void IconDownloader::fetchFinished()
         m_timeout.stop();
         emit finished(url, image);
     }
-}
-
-/**
- * Parse fetched image bytes.
- *
- * Parses the given byte array into a QImage. Unlike QImage::loadFromData(), this method
- * tries to extract the highest resolution image from .ICO files.
- *
- * @param imageBytes raw image bytes
- * @return parsed image
- */
-QImage IconDownloader::parseImage(QByteArray& imageBytes) const
-{
-    QBuffer buff(&imageBytes);
-    buff.open(QIODevice::ReadOnly);
-    QImageReader reader(&buff);
-
-    if (reader.imageCount() <= 0) {
-        return reader.read();
-    }
-
-    QImage img;
-    for (int i = 0; i < reader.imageCount(); ++i) {
-        if (img.isNull() || reader.size().width() > img.size().width()) {
-            img = reader.read();
-        }
-        reader.jumpToNextImage();
-    }
-
-    return img;
 }

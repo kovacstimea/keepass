@@ -31,15 +31,14 @@
 #include "core/Config.h"
 #include "core/Database.h"
 #include "core/Entry.h"
+#include "core/FilePath.h"
 #include "core/Group.h"
 #include "core/ListDeleter.h"
-#include "core/Resources.h"
 #include "core/Tools.h"
-#include "gui/MainWindow.h"
 #include "gui/MessageBox.h"
 
 #ifdef Q_OS_MAC
-#include "gui/osutils/macutils/MacUtils.h"
+#include "gui/macutils/MacUtils.h"
 #endif
 
 AutoType* AutoType::m_instance = nullptr;
@@ -52,7 +51,6 @@ AutoType::AutoType(QObject* parent, bool test)
     , m_pluginLoader(new QPluginLoader(this))
     , m_plugin(nullptr)
     , m_executor(nullptr)
-    , m_windowState(WindowState::Normal)
     , m_windowForGlobal(0)
 {
     // prevent crash when the plugin has unresolved symbols
@@ -65,7 +63,7 @@ AutoType::AutoType(QObject* parent, bool test)
         pluginName += "test";
     }
 
-    QString pluginPath = resources()->pluginPath(pluginName);
+    QString pluginPath = filePath()->pluginPath(pluginName);
 
     if (!pluginPath.isEmpty()) {
 #ifdef WITH_XC_AUTOTYPE
@@ -229,15 +227,14 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
                                        "KeePassXC."));
             return;
         }
-
         macUtils()->raiseLastActiveWindow();
         m_plugin->hideOwnWindow();
 #else
-        getMainWindow()->minimizeOrHide();
+        hideWindow->showMinimized();
 #endif
     }
 
-    Tools::wait(qMax(100, config()->get(Config::AutoTypeStartDelay).toInt()));
+    Tools::wait(qMax(100, config()->get("AutoTypeStartDelay", 500).toInt()));
 
     // Used only for selected entry auto-type
     if (!window) {
@@ -269,7 +266,7 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
 
 /**
  * Single Autotype entry-point function
- * Look up the Auto-Type sequence for the given entry then perfom Auto-Type in the active window
+ * Perfom autotype sequence in the active window
  */
 void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow)
 {
@@ -285,35 +282,10 @@ void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow)
     executeAutoTypeActions(entry, hideWindow, sequences.first());
 }
 
-/**
- * Extra Autotype entry-point function
- * Perfom Auto-Type of the directly specified sequence in the active window
- */
-void AutoType::performAutoTypeWithSequence(const Entry* entry, const QString& sequence, QWidget* hideWindow)
-{
-    if (!m_plugin) {
-        return;
-    }
-
-    executeAutoTypeActions(entry, hideWindow, sequence);
-}
-
 void AutoType::startGlobalAutoType()
 {
     m_windowForGlobal = m_plugin->activeWindow();
     m_windowTitleForGlobal = m_plugin->activeWindowTitle();
-#ifdef Q_OS_MACOS
-    m_windowState = WindowState::Normal;
-    if (getMainWindow()) {
-        if (getMainWindow()->isMinimized()) {
-            m_windowState = WindowState::Minimized;
-        }
-        if (getMainWindow()->isHidden()) {
-            m_windowState = WindowState::Hidden;
-        }
-    }
-#endif
-
     emit globalAutoTypeTriggered();
 }
 
@@ -360,17 +332,14 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
                                 .append(m_windowTitleForGlobal));
             msgBox->setIcon(QMessageBox::Information);
             msgBox->setStandardButtons(QMessageBox::Ok);
-#ifdef Q_OS_MACOS
-            m_plugin->raiseOwnWindow();
-            Tools::wait(200);
-#endif
-            msgBox->exec();
-            restoreWindowState();
+            msgBox->show();
+            msgBox->raise();
+            msgBox->activateWindow();
         }
 
         m_inGlobalAutoTypeDialog.unlock();
         emit autotypeRejected();
-    } else if ((matchList.size() == 1) && !config()->get(Config::Security_AutoTypeAsk).toBool()) {
+    } else if ((matchList.size() == 1) && !config()->get("security/autotypeask").toBool()) {
         executeAutoTypeActions(matchList.first().entry, nullptr, matchList.first().sequence, m_windowForGlobal);
         m_inGlobalAutoTypeDialog.unlock();
     } else {
@@ -392,23 +361,8 @@ void AutoType::performGlobalAutoType(const QList<QSharedPointer<Database>>& dbLi
     }
 }
 
-void AutoType::restoreWindowState()
-{
-#ifdef Q_OS_MAC
-    if (getMainWindow()) {
-        if (m_windowState == WindowState::Minimized) {
-            getMainWindow()->showMinimized();
-        } else if (m_windowState == WindowState::Hidden) {
-            getMainWindow()->hideWindow();
-        }
-    }
-#endif
-}
-
 void AutoType::performAutoTypeFromGlobal(AutoTypeMatch match)
 {
-    restoreWindowState();
-
     m_plugin->raiseWindow(m_windowForGlobal);
     executeAutoTypeActions(match.entry, nullptr, match.sequence, m_windowForGlobal);
 
@@ -426,7 +380,6 @@ void AutoType::autoTypeRejectedFromGlobal()
     m_windowForGlobal = 0;
     m_windowTitleForGlobal.clear();
 
-    restoreWindowState();
     emit autotypeRejected();
 }
 
@@ -437,7 +390,7 @@ bool AutoType::parseActions(const QString& actionSequence, const Entry* entry, Q
 {
     QString tmpl;
     bool inTmpl = false;
-    m_autoTypeDelay = qMax(config()->get(Config::AutoTypeDelay).toInt(), 0);
+    m_autoTypeDelay = qMax(config()->get("AutoTypeDelay").toInt(), 0);
 
     QString sequence = actionSequence;
     sequence.replace("{{}", "{LEFTBRACE}");
@@ -664,12 +617,12 @@ QList<QString> AutoType::autoTypeSequences(const Entry* entry, const QString& wi
             }
         }
 
-        if (config()->get(Config::AutoTypeEntryTitleMatch).toBool()
+        if (config()->get("AutoTypeEntryTitleMatch").toBool()
             && windowMatchesTitle(windowTitle, entry->resolvePlaceholder(entry->title()))) {
             sequenceList.append(entry->effectiveAutoTypeSequence());
         }
 
-        if (config()->get(Config::AutoTypeEntryURLMatch).toBool()
+        if (config()->get("AutoTypeEntryURLMatch").toBool()
             && windowMatchesUrl(windowTitle, entry->resolvePlaceholder(entry->url()))) {
             sequenceList.append(entry->effectiveAutoTypeSequence());
         }
@@ -731,7 +684,7 @@ bool AutoType::checkSyntax(const QString& string)
     QString allowRepetition = "(?:\\s\\d+)?";
     // the ":" allows custom commands with syntax S:Field
     // exclude BEEP otherwise will be checked as valid
-    QString normalCommands = "(?!BEEP\\s)[A-Z:_]*" + allowRepetition;
+    QString normalCommands = "(?!BEEP\\s)[A-Z:]*" + allowRepetition;
     QString specialLiterals = "[\\^\\%\\(\\)~\\{\\}\\[\\]\\+]" + allowRepetition;
     QString functionKeys = "(?:F[1-9]" + allowRepetition + "|F1[0-2])" + allowRepetition;
     QString numpad = "NUMPAD\\d" + allowRepetition;

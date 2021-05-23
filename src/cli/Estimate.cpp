@@ -19,7 +19,6 @@
 #include "cli/Utils.h"
 
 #include "cli/TextStream.h"
-#include "core/PasswordHealth.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,11 +47,12 @@ Estimate::Estimate()
 
 static void estimate(const char* pwd, bool advanced)
 {
-    auto& out = Utils::STDOUT;
+    TextStream out(Utils::STDOUT, QIODevice::WriteOnly);
 
+    double e = 0.0;
     int len = static_cast<int>(strlen(pwd));
     if (!advanced) {
-        const auto e = PasswordHealth(pwd).entropy();
+        e = ZxcvbnMatch(pwd, nullptr, nullptr);
         // clang-format off
         out << QObject::tr("Length %1").arg(len, 0) << '\t'
             << QObject::tr("Entropy %1").arg(e, 0, 'f', 3) << '\t'
@@ -62,7 +62,7 @@ static void estimate(const char* pwd, bool advanced)
         int ChkLen = 0;
         ZxcMatch_t *info, *p;
         double m = 0.0;
-        const auto e = ZxcvbnMatch(pwd, nullptr, &info);
+        e = ZxcvbnMatch(pwd, nullptr, &info);
         for (p = info; p; p = p->Next) {
             m += p->Entrpy;
         }
@@ -163,14 +163,14 @@ int Estimate::execute(const QStringList& arguments)
         return EXIT_FAILURE;
     }
 
-    auto& in = Utils::STDIN;
+    TextStream inputTextStream(Utils::STDIN, QIODevice::ReadOnly);
     const QStringList args = parser->positionalArguments();
 
     QString password;
     if (args.size() == 1) {
         password = args.at(0);
     } else {
-        password = in.readLine();
+        password = inputTextStream.readLine();
     }
 
     estimate(password.toLatin1(), parser->isSet(Estimate::AdvancedOption));

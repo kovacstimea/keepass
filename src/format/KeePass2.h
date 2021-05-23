@@ -53,8 +53,7 @@ namespace KeePass2
 
     extern const QUuid KDF_AES_KDBX3;
     extern const QUuid KDF_AES_KDBX4;
-    extern const QUuid KDF_ARGON2D;
-    extern const QUuid KDF_ARGON2ID;
+    extern const QUuid KDF_ARGON2;
 
     extern const QByteArray INNER_STREAM_SALSA20_IV;
 

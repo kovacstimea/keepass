@@ -20,7 +20,7 @@
  */
 #include "KMessageWidget.h"
 
-#include "core/Resources.h"
+#include "core/FilePath.h"
 #include "core/Global.h"
 
 #include <QAction>
@@ -94,7 +94,7 @@ void KMessageWidgetPrivate::init(KMessageWidget *q_ptr)
     QAction *closeAction = new QAction(q);
     closeAction->setText(KMessageWidget::tr("&Close"));
     closeAction->setToolTip(KMessageWidget::tr("Close message"));
-    closeAction->setIcon(Resources::instance()->icon("message-close"));
+    closeAction->setIcon(FilePath::instance()->icon("actions", "message-close", false));
 
     QObject::connect(closeAction, SIGNAL(triggered(bool)), q, SLOT(animatedHide()));
 
@@ -102,6 +102,12 @@ void KMessageWidgetPrivate::init(KMessageWidget *q_ptr)
     closeButton->setAutoRaise(true);
     closeButton->setDefaultAction(closeAction);
     closeButtonPixmap = QPixmap(closeButton->icon().pixmap(closeButton->icon().actualSize(QSize(16, 16))));
+#ifdef Q_OS_MACOS
+    closeButton->setStyleSheet("QToolButton { background: transparent;"
+                                   "border-radius: 2px; padding: 3px; }"
+                               "QToolButton::hover, QToolButton::focus {"
+                                   "border: 1px solid rgb(90, 200, 250); }");
+#endif
 
     q->setMessageType(KMessageWidget::Information);
 }
@@ -257,7 +263,7 @@ void KMessageWidget::setMessageType(KMessageWidget::MessageType type)
 {
     d->messageType = type;
     QColor bg0, bg1, bg2, border;
-    QColor fg = QColor(238, 238, 238);
+    QColor fg = palette().light().color();
     switch (type) {
     case Positive:
         bg1.setRgb(37, 163, 83);
@@ -267,7 +273,7 @@ void KMessageWidget::setMessageType(KMessageWidget::MessageType type)
         break;
     case Warning:
         bg1.setRgb(252, 193, 57);
-        fg = QColor(48, 48, 48);
+        fg = palette().windowText().color();
         break;
     case Error:
         bg1.setRgb(198, 69, 21);
@@ -288,15 +294,9 @@ void KMessageWidget::setMessageType(KMessageWidget::MessageType type)
     painter.fillRect(QRect(0, 0, 16, 16), fg);
     painter.end();
     d->closeButton->setIcon(closeButtonPixmap);
-    d->closeButton->setStyleSheet(QStringLiteral("QToolButton {"
-                                  "  background: transparent;"
-                                  "  border-radius: 2px;"
-                                  "  border: none; }"
-                                  "QToolButton:hover, QToolButton:focus {"
-                                  "  border: 1px solid %1; }").arg(fg.name()));
 
     d->content->setStyleSheet(
-        QStringLiteral(".QFrame {"
+        QString(QLatin1String(".QFrame {"
         "background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,"
         "    stop: 0 %1,"
         "    stop: 0.1 %2,"
@@ -307,7 +307,7 @@ void KMessageWidget::setMessageType(KMessageWidget::MessageType type)
         "    padding: 5px;"
         "}"
         ".QLabel { color: %6; }"
-        )
+        ))
         .arg(bg0.name(),
              bg1.name(),
              bg2.name(),

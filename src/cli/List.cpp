@@ -47,8 +47,8 @@ List::List()
 
 int List::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = Utils::STDOUT;
-    auto& err = Utils::STDERR;
+    TextStream outputTextStream(Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     const QStringList args = parser->positionalArguments();
     bool recursive = parser->isSet(List::RecursiveOption);
@@ -56,17 +56,17 @@ int List::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<
 
     // No group provided, defaulting to root group.
     if (args.size() == 1) {
-        out << database->rootGroup()->print(recursive, flatten) << flush;
+        outputTextStream << database->rootGroup()->print(recursive, flatten) << flush;
         return EXIT_SUCCESS;
     }
 
     const QString& groupPath = args.at(1);
     Group* group = database->rootGroup()->findGroupByPath(groupPath);
     if (!group) {
-        err << QObject::tr("Cannot find group %1.").arg(groupPath) << endl;
+        errorTextStream << QObject::tr("Cannot find group %1.").arg(groupPath) << endl;
         return EXIT_FAILURE;
     }
 
-    out << group->print(recursive, flatten) << flush;
+    outputTextStream << group->print(recursive, flatten) << flush;
     return EXIT_SUCCESS;
 }

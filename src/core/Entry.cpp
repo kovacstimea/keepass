@@ -163,7 +163,7 @@ const QString Entry::uuidToHex() const
 QImage Entry::icon() const
 {
     if (m_data.customIcon.isNull()) {
-        return databaseIcons()->icon(m_data.iconNumber).toImage();
+        return databaseIcons()->icon(m_data.iconNumber);
     } else {
         Q_ASSERT(database());
 
@@ -175,23 +175,27 @@ QImage Entry::icon() const
     }
 }
 
-QPixmap Entry::iconPixmap(IconSize size) const
+QPixmap Entry::iconPixmap() const
 {
-    QPixmap icon(size, size);
     if (m_data.customIcon.isNull()) {
-        icon = databaseIcons()->icon(m_data.iconNumber, size);
-    } else {
-        Q_ASSERT(database());
-        if (database()) {
-            icon = database()->metadata()->customIconPixmap(m_data.customIcon, size);
-        }
+        return databaseIcons()->iconPixmap(m_data.iconNumber);
     }
 
-    if (isExpired()) {
-        icon = databaseIcons()->applyBadge(icon, DatabaseIcons::Badges::Expired);
+    Q_ASSERT(database());
+    if (database()) {
+        return database()->metadata()->customIconPixmap(m_data.customIcon);
     }
+    return QPixmap();
+}
 
-    return icon;
+QPixmap Entry::iconScaledPixmap() const
+{
+    if (m_data.customIcon.isNull()) {
+        // built-in icons are 16x16 so don't need to be scaled
+        return databaseIcons()->iconPixmap(m_data.iconNumber);
+    }
+    Q_ASSERT(database());
+    return database()->metadata()->customIconScaledPixmap(m_data.customIcon);
 }
 
 int Entry::iconNumber() const
@@ -204,12 +208,12 @@ const QUuid& Entry::iconUuid() const
     return m_data.customIcon;
 }
 
-QString Entry::foregroundColor() const
+QColor Entry::foregroundColor() const
 {
     return m_data.foregroundColor;
 }
 
-QString Entry::backgroundColor() const
+QColor Entry::backgroundColor() const
 {
     return m_data.backgroundColor;
 }
@@ -332,23 +336,6 @@ QString Entry::attribute(const QString& key) const
     return m_attributes->value(key);
 }
 
-int Entry::size() const
-{
-    int size = 0;
-    const QRegularExpression delimiter(",|:|;");
-
-    size += this->attributes()->attributesSize();
-    size += this->autoTypeAssociations()->associationsSize();
-    size += this->attachments()->attachmentsSize();
-    size += this->customData()->dataSize();
-    const QStringList tags = this->tags().split(delimiter, QString::SkipEmptyParts);
-    for (const QString& tag : tags) {
-        size += tag.toUtf8().size();
-    }
-
-    return size;
-}
-
 bool Entry::isExpired() const
 {
     return m_data.timeInfo.expires() && m_data.timeInfo.expiryTime() < Clock::currentDateTimeUtc();
@@ -463,8 +450,7 @@ void Entry::setTotp(QSharedPointer<Totp::Settings> settings)
         m_data.totpSettings.reset();
     } else {
         m_data.totpSettings = std::move(settings);
-        auto text = Totp::writeSettings(
-            m_data.totpSettings, resolveMultiplePlaceholders(title()), resolveMultiplePlaceholders(username()));
+        auto text = Totp::writeSettings(m_data.totpSettings, title(), username());
         if (m_data.totpSettings->format != Totp::StorageFormat::LEGACY) {
             m_attributes->set(Totp::ATTRIBUTE_OTP, text, true);
         } else {
@@ -482,23 +468,12 @@ void Entry::updateTotp()
                                                   m_attributes->value(Totp::ATTRIBUTE_SEED));
     } else if (m_attributes->contains(Totp::ATTRIBUTE_OTP)) {
         m_data.totpSettings = Totp::parseSettings(m_attributes->value(Totp::ATTRIBUTE_OTP));
-    } else {
-        m_data.totpSettings.reset();
     }
 }
 
 QSharedPointer<Totp::Settings> Entry::totpSettings() const
 {
     return m_data.totpSettings;
-}
-
-QString Entry::totpSettingsString() const
-{
-    if (m_data.totpSettings) {
-        return Totp::writeSettings(
-            m_data.totpSettings, resolveMultiplePlaceholders(title()), resolveMultiplePlaceholders(username()), true);
-    }
-    return {};
 }
 
 void Entry::setUuid(const QUuid& uuid)
@@ -533,14 +508,14 @@ void Entry::setIcon(const QUuid& uuid)
     }
 }
 
-void Entry::setForegroundColor(const QString& colorStr)
+void Entry::setForegroundColor(const QColor& color)
 {
-    set(m_data.foregroundColor, colorStr);
+    set(m_data.foregroundColor, color);
 }
 
-void Entry::setBackgroundColor(const QString& colorStr)
+void Entry::setBackgroundColor(const QColor& color)
 {
-    set(m_data.backgroundColor, colorStr);
+    set(m_data.backgroundColor, color);
 }
 
 void Entry::setOverrideUrl(const QString& url)
@@ -675,7 +650,6 @@ void Entry::truncateHistory()
         return;
     }
 
-    bool changed = false;
     int histMaxItems = db->metadata()->historyMaxItems();
     if (histMaxItems > -1) {
         int historyCount = 0;
@@ -687,7 +661,6 @@ void Entry::truncateHistory()
             if (historyCount > histMaxItems) {
                 delete entry;
                 i.remove();
-                changed = true;
             }
         }
     }
@@ -699,25 +672,28 @@ void Entry::truncateHistory()
 
         QMutableListIterator<Entry*> i(m_history);
         i.toBack();
+        const QRegularExpression delimiter(",|:|;");
         while (i.hasPrevious()) {
             Entry* historyItem = i.previous();
 
             // don't calculate size if it's already above the maximum
             if (size <= histMaxSize) {
-                size += historyItem->size();
+                size += historyItem->attributes()->attributesSize();
+                size += historyItem->autoTypeAssociations()->associationsSize();
+                size += historyItem->attachments()->attachmentsSize();
+                size += historyItem->customData()->dataSize();
+                const QStringList tags = historyItem->tags().split(delimiter, QString::SkipEmptyParts);
+                for (const QString& tag : tags) {
+                    size += tag.toUtf8().size();
+                }
                 foundAttachments += historyItem->attachments()->values();
             }
 
             if (size > histMaxSize) {
                 delete historyItem;
                 i.remove();
-                changed = true;
             }
         }
-    }
-
-    if (changed) {
-        emit entryModified();
     }
 }
 
@@ -803,9 +779,8 @@ Entry* Entry::clone(CloneFlags flags) const
         entry->m_data.timeInfo.setLocationChanged(now);
     }
 
-    if (flags & CloneRenameTitle) {
+    if (flags & CloneRenameTitle)
         entry->setTitle(tr("%1 - Clone").arg(entry->title()));
-    }
 
     entry->setUpdateTimeinfo(true);
 
@@ -918,10 +893,6 @@ QString Entry::resolvePlaceholderRecursive(const QString& placeholder, int maxDe
             return url();
         }
         return resolveMultiplePlaceholdersRecursive(url(), maxDepth - 1);
-    case PlaceholderType::DbDir: {
-        QFileInfo fileInfo(database()->filePath());
-        return fileInfo.absoluteDir().absolutePath();
-    }
     case PlaceholderType::UrlWithoutScheme:
     case PlaceholderType::UrlScheme:
     case PlaceholderType::UrlHost:
@@ -944,82 +915,9 @@ QString Entry::resolvePlaceholderRecursive(const QString& placeholder, int maxDe
     }
     case PlaceholderType::Reference:
         return resolveReferencePlaceholderRecursive(placeholder, maxDepth);
-    case PlaceholderType::DateTimeSimple:
-    case PlaceholderType::DateTimeYear:
-    case PlaceholderType::DateTimeMonth:
-    case PlaceholderType::DateTimeDay:
-    case PlaceholderType::DateTimeHour:
-    case PlaceholderType::DateTimeMinute:
-    case PlaceholderType::DateTimeSecond:
-    case PlaceholderType::DateTimeUtcSimple:
-    case PlaceholderType::DateTimeUtcYear:
-    case PlaceholderType::DateTimeUtcMonth:
-    case PlaceholderType::DateTimeUtcDay:
-    case PlaceholderType::DateTimeUtcHour:
-    case PlaceholderType::DateTimeUtcMinute:
-    case PlaceholderType::DateTimeUtcSecond:
-        return resolveMultiplePlaceholdersRecursive(resolveDateTimePlaceholder(typeOfPlaceholder), maxDepth - 1);
     }
 
     return placeholder;
-}
-
-QString Entry::resolveDateTimePlaceholder(Entry::PlaceholderType placeholderType) const
-{
-    QDateTime time = Clock::currentDateTime();
-    QDateTime time_utc = Clock::currentDateTimeUtc();
-    QString date_formatted{};
-
-    switch (placeholderType) {
-    case PlaceholderType::DateTimeSimple:
-        date_formatted = time.toString("yyyyMMddhhmmss");
-        break;
-    case PlaceholderType::DateTimeYear:
-        date_formatted = time.toString("yyyy");
-        break;
-    case PlaceholderType::DateTimeMonth:
-        date_formatted = time.toString("MM");
-        break;
-    case PlaceholderType::DateTimeDay:
-        date_formatted = time.toString("dd");
-        break;
-    case PlaceholderType::DateTimeHour:
-        date_formatted = time.toString("hh");
-        break;
-    case PlaceholderType::DateTimeMinute:
-        date_formatted = time.toString("mm");
-        break;
-    case PlaceholderType::DateTimeSecond:
-        date_formatted = time.toString("ss");
-        break;
-    case PlaceholderType::DateTimeUtcSimple:
-        date_formatted = time_utc.toString("yyyyMMddhhmmss");
-        break;
-    case PlaceholderType::DateTimeUtcYear:
-        date_formatted = time_utc.toString("yyyy");
-        break;
-    case PlaceholderType::DateTimeUtcMonth:
-        date_formatted = time_utc.toString("MM");
-        break;
-    case PlaceholderType::DateTimeUtcDay:
-        date_formatted = time_utc.toString("dd");
-        break;
-    case PlaceholderType::DateTimeUtcHour:
-        date_formatted = time_utc.toString("hh");
-        break;
-    case PlaceholderType::DateTimeUtcMinute:
-        date_formatted = time_utc.toString("mm");
-        break;
-    case PlaceholderType::DateTimeUtcSecond:
-        date_formatted = time_utc.toString("ss");
-        break;
-    default: {
-        Q_ASSERT_X(false, "Entry::resolveDateTimePlaceholder", "Bad DateTime placeholder type");
-        break;
-    }
-    }
-
-    return date_formatted;
 }
 
 QString Entry::resolveReferencePlaceholderRecursive(const QString& placeholder, int maxDepth) const
@@ -1081,20 +979,6 @@ QString Entry::referenceFieldValue(EntryReferenceType referenceType) const
     return QString();
 }
 
-void Entry::moveUp()
-{
-    if (m_group) {
-        m_group->moveEntryUp(this);
-    }
-}
-
-void Entry::moveDown()
-{
-    if (m_group) {
-        m_group->moveEntryDown(this);
-    }
-}
-
 Group* Entry::group()
 {
     return m_group;
@@ -1119,8 +1003,9 @@ void Entry::setGroup(Group* group)
             m_group->database()->addDeletedObject(m_uuid);
 
             // copy custom icon to the new database
-            if (!iconUuid().isNull() && group->database() && m_group->database()->metadata()->hasCustomIcon(iconUuid())
-                && !group->database()->metadata()->hasCustomIcon(iconUuid())) {
+            if (!iconUuid().isNull() && group->database()
+                && m_group->database()->metadata()->containsCustomIcon(iconUuid())
+                && !group->database()->metadata()->containsCustomIcon(iconUuid())) {
                 group->database()->metadata()->addCustomIcon(iconUuid(), icon());
             }
         }
@@ -1190,9 +1075,8 @@ QString Entry::resolvePlaceholder(const QString& placeholder) const
 
 QString Entry::resolveUrlPlaceholder(const QString& str, Entry::PlaceholderType placeholderType) const
 {
-    if (str.isEmpty()) {
+    if (str.isEmpty())
         return QString();
-    }
 
     const QUrl qurl(str);
     switch (placeholderType) {
@@ -1255,22 +1139,7 @@ Entry::PlaceholderType Entry::placeholderType(const QString& placeholder) const
         {QStringLiteral("{URL:FRAGMENT}"), PlaceholderType::UrlFragment},
         {QStringLiteral("{URL:USERINFO}"), PlaceholderType::UrlUserInfo},
         {QStringLiteral("{URL:USERNAME}"), PlaceholderType::UrlUserName},
-        {QStringLiteral("{URL:PASSWORD}"), PlaceholderType::UrlPassword},
-        {QStringLiteral("{DT_SIMPLE}"), PlaceholderType::DateTimeSimple},
-        {QStringLiteral("{DT_YEAR}"), PlaceholderType::DateTimeYear},
-        {QStringLiteral("{DT_MONTH}"), PlaceholderType::DateTimeMonth},
-        {QStringLiteral("{DT_DAY}"), PlaceholderType::DateTimeDay},
-        {QStringLiteral("{DT_HOUR}"), PlaceholderType::DateTimeHour},
-        {QStringLiteral("{DT_MINUTE}"), PlaceholderType::DateTimeMinute},
-        {QStringLiteral("{DT_SECOND}"), PlaceholderType::DateTimeSecond},
-        {QStringLiteral("{DT_UTC_SIMPLE}"), PlaceholderType::DateTimeUtcSimple},
-        {QStringLiteral("{DT_UTC_YEAR}"), PlaceholderType::DateTimeUtcYear},
-        {QStringLiteral("{DT_UTC_MONTH}"), PlaceholderType::DateTimeUtcMonth},
-        {QStringLiteral("{DT_UTC_DAY}"), PlaceholderType::DateTimeUtcDay},
-        {QStringLiteral("{DT_UTC_HOUR}"), PlaceholderType::DateTimeUtcHour},
-        {QStringLiteral("{DT_UTC_MINUTE}"), PlaceholderType::DateTimeUtcMinute},
-        {QStringLiteral("{DT_UTC_SECOND}"), PlaceholderType::DateTimeUtcSecond},
-        {QStringLiteral("{DB_DIR}"), PlaceholderType::DbDir}};
+        {QStringLiteral("{URL:PASSWORD}"), PlaceholderType::UrlPassword}};
 
     return placeholders.value(placeholder.toUpper(), PlaceholderType::Unknown);
 }

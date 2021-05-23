@@ -16,17 +16,20 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
+
+#include "core/Global.h"
+#include "crypto/Random.h"
+
 #include "YubiKey.h"
 
 YubiKey::YubiKey()
+    : m_yk_void(NULL)
+    , m_ykds_void(NULL)
 {
 }
 
-YubiKey::~YubiKey()
-{
-}
-
-YubiKey* YubiKey::m_instance(nullptr);
+YubiKey* YubiKey::m_instance(Q_NULLPTR);
 
 YubiKey* YubiKey::instance()
 {
@@ -37,43 +40,45 @@ YubiKey* YubiKey::instance()
     return m_instance;
 }
 
-bool YubiKey::isInitialized()
+bool YubiKey::init()
 {
     return false;
 }
 
-void YubiKey::findValidKeys()
+bool YubiKey::deinit()
+{
+    return false;
+}
+
+void YubiKey::detect()
 {
 }
 
-QList<YubiKeySlot> YubiKey::foundKeys()
+bool YubiKey::getSerial(unsigned int& serial)
 {
-    return {};
+    Q_UNUSED(serial);
+
+    return false;
 }
 
-QString YubiKey::getDisplayName(YubiKeySlot slot)
+QString YubiKey::getVendorName()
+{
+    return "YubiKeyStub";
+}
+
+YubiKey::ChallengeResult YubiKey::challenge(int slot, bool mayBlock, const QByteArray& chal, QByteArray& resp)
 {
     Q_UNUSED(slot);
-    return {};
-}
-
-QString YubiKey::errorMessage()
-{
-    return {};
-}
-
-YubiKey::ChallengeResult YubiKey::challenge(YubiKeySlot slot, const QByteArray& chal, QByteArray& resp)
-{
-    Q_UNUSED(slot);
+    Q_UNUSED(mayBlock);
     Q_UNUSED(chal);
     Q_UNUSED(resp);
 
     return ERROR;
 }
 
-bool YubiKey::testChallenge(YubiKeySlot slot, bool* wouldBlock)
+bool YubiKey::checkSlotIsBlocking(int slot, QString& errorMessage)
 {
     Q_UNUSED(slot);
-    Q_UNUSED(wouldBlock);
+    Q_UNUSED(errorMessage);
     return false;
 }

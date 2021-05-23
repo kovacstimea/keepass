@@ -20,13 +20,12 @@
 
 #include <QMap>
 #include <QObject>
-#include <QSharedPointer>
 #include <QStringList>
 
 #include "gui/MessageWidget.h"
 #include "keeshare/KeeShareSettings.h"
 
-class FileWatcher;
+class BulkFileWatcher;
 class Group;
 class Database;
 
@@ -68,7 +67,9 @@ signals:
 private slots:
     void handleDatabaseChanged();
     void handleDatabaseSaved();
+    void handleFileCreated(const QString& path);
     void handleFileUpdated(const QString& path);
+    void handleFileDeleted(const QString& path);
 
 private:
     Result importShare(const QString& path);
@@ -80,10 +81,11 @@ private:
 
 private:
     QSharedPointer<Database> m_db;
+    QMap<KeeShareSettings::Reference, QPointer<Group>> m_referenceToGroup;
     QMap<QPointer<Group>, KeeShareSettings::Reference> m_groupToReference;
     QMap<QString, QPointer<Group>> m_shareToGroup;
-    QMap<QString, QSharedPointer<FileWatcher>> m_fileWatchers;
-    bool m_inFileUpdate = false;
+
+    BulkFileWatcher* m_fileWatcher;
 };
 
 #endif // KEEPASSXC_SHAREOBSERVER_H

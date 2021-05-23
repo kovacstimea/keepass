@@ -69,15 +69,16 @@ Add::Add()
 
 int Add::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = Utils::STDOUT;
-    auto& err = Utils::STDERR;
+    TextStream inputTextStream(Utils::STDIN, QIODevice::ReadOnly);
+    TextStream outputTextStream(Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     const QStringList args = parser->positionalArguments();
     auto& entryPath = args.at(1);
 
     // Cannot use those 2 options at the same time!
     if (parser->isSet(Add::GenerateOption) && parser->isSet(Add::PasswordPromptOption)) {
-        err << QObject::tr("Cannot generate a password and prompt at the same time!") << endl;
+        errorTextStream << QObject::tr("Cannot generate a password and prompt at the same time!") << endl;
         return EXIT_FAILURE;
     }
 
@@ -93,7 +94,7 @@ int Add::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<Q
 
     Entry* entry = database->rootGroup()->addEntryWithPath(entryPath);
     if (!entry) {
-        err << QObject::tr("Could not create entry with path %1.").arg(entryPath) << endl;
+        errorTextStream << QObject::tr("Could not create entry with path %1.").arg(entryPath) << endl;
         return EXIT_FAILURE;
     }
 
@@ -107,9 +108,9 @@ int Add::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<Q
 
     if (parser->isSet(Add::PasswordPromptOption)) {
         if (!parser->isSet(Command::QuietOption)) {
-            out << QObject::tr("Enter password for new entry: ") << flush;
+            outputTextStream << QObject::tr("Enter password for new entry: ") << flush;
         }
-        QString password = Utils::getPassword(parser->isSet(Command::QuietOption));
+        QString password = Utils::getPassword(parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT);
         entry->setPassword(password);
     } else if (parser->isSet(Add::GenerateOption)) {
         QString password = passwordGenerator->generatePassword();
@@ -118,12 +119,12 @@ int Add::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<Q
 
     QString errorMessage;
     if (!database->save(&errorMessage, true, false)) {
-        err << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Writing the database failed %1.").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
     if (!parser->isSet(Command::QuietOption)) {
-        out << QObject::tr("Successfully added entry %1.").arg(entry->title()) << endl;
+        outputTextStream << QObject::tr("Successfully added entry %1.").arg(entry->title()) << endl;
     }
     return EXIT_SUCCESS;
 }

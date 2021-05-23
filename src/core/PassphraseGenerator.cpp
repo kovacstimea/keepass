@@ -21,7 +21,7 @@
 #include <QTextStream>
 #include <cmath>
 
-#include "core/Resources.h"
+#include "core/FilePath.h"
 #include "crypto/Random.h"
 
 const char* PassphraseGenerator::DefaultSeparator = " ";
@@ -80,7 +80,7 @@ void PassphraseGenerator::setWordList(const QString& path)
 
 void PassphraseGenerator::setDefaultWordList()
 {
-    const QString path = resources()->wordlistPath(PassphraseGenerator::DefaultWordList);
+    const QString path = filePath()->wordlistPath(PassphraseGenerator::DefaultWordList);
     setWordList(path);
 }
 

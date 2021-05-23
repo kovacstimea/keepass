@@ -37,6 +37,7 @@ protected:
 
 private:
     void alignWithParent();
+    QPointer<QWidget> m_parentWindow;
     QPointer<QWidget> m_appWindow;
 
     QPoint m_offset;

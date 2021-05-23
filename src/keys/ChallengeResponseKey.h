@@ -29,24 +29,18 @@ public:
         : m_uuid(uuid)
     {
     }
-    virtual ~ChallengeResponseKey() = default;
-
+    Q_DISABLE_COPY(ChallengeResponseKey);
+    virtual ~ChallengeResponseKey()
+    {
+    }
     virtual QByteArray rawKey() const = 0;
     virtual bool challenge(const QByteArray& challenge) = 0;
     virtual QUuid uuid() const
     {
         return m_uuid;
     }
-    QString error() const
-    {
-        return m_error;
-    }
-
-protected:
-    QString m_error;
 
 private:
-    Q_DISABLE_COPY(ChallengeResponseKey);
     QUuid m_uuid;
 };
 

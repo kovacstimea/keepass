@@ -41,20 +41,21 @@ RemoveGroup::~RemoveGroup()
 
 int RemoveGroup::executeWithDatabase(QSharedPointer<Database> database, QSharedPointer<QCommandLineParser> parser)
 {
-    auto& out = parser->isSet(Command::QuietOption) ? Utils::DEVNULL : Utils::STDOUT;
-    auto& err = Utils::STDERR;
-
+    bool quiet = parser->isSet(Command::QuietOption);
     QString groupPath = parser->positionalArguments().at(1);
+
+    TextStream outputTextStream(quiet ? Utils::DEVNULL : Utils::STDOUT, QIODevice::WriteOnly);
+    TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
 
     // Recursive option means were looking for a group to remove.
     QPointer<Group> group = database->rootGroup()->findGroupByPath(groupPath);
     if (!group) {
-        err << QObject::tr("Group %1 not found.").arg(groupPath) << endl;
+        errorTextStream << QObject::tr("Group %1 not found.").arg(groupPath) << endl;
         return EXIT_FAILURE;
     }
 
     if (group == database->rootGroup()) {
-        err << QObject::tr("Cannot remove root group from database.") << endl;
+        errorTextStream << QObject::tr("Cannot remove root group from database.") << endl;
         return EXIT_FAILURE;
     }
 
@@ -69,14 +70,14 @@ int RemoveGroup::executeWithDatabase(QSharedPointer<Database> database, QSharedP
 
     QString errorMessage;
     if (!database->save(&errorMessage, true, false)) {
-        err << QObject::tr("Unable to save database to file: %1").arg(errorMessage) << endl;
+        errorTextStream << QObject::tr("Unable to save database to file: %1").arg(errorMessage) << endl;
         return EXIT_FAILURE;
     }
 
     if (recycled) {
-        out << QObject::tr("Successfully recycled group %1.").arg(groupPath) << endl;
+        outputTextStream << QObject::tr("Successfully recycled group %1.").arg(groupPath) << endl;
     } else {
-        out << QObject::tr("Successfully deleted group %1.").arg(groupPath) << endl;
+        outputTextStream << QObject::tr("Successfully deleted group %1.").arg(groupPath) << endl;
     }
 
     return EXIT_SUCCESS;

@@ -118,14 +118,13 @@ private:
 
 void enterInteractiveMode(const QStringList& arguments)
 {
-    auto& err = Utils::STDERR;
     // Replace command list with interactive version
     Commands::setupCommands(true);
 
-    Open openCmd;
+    Open o;
     QStringList openArgs(arguments);
     openArgs.removeFirst();
-    openCmd.execute(openArgs);
+    o.execute(openArgs);
 
     QScopedPointer<LineReader> reader;
 #if defined(USE_READLINE)
@@ -134,10 +133,12 @@ void enterInteractiveMode(const QStringList& arguments)
     reader.reset(new SimpleLineReader());
 #endif
 
-    QSharedPointer<Database> currentDatabase(openCmd.currentDatabase);
+    QSharedPointer<Database> currentDatabase(o.currentDatabase);
 
     QString command;
     while (true) {
+        TextStream errorTextStream(Utils::STDERR, QIODevice::WriteOnly);
+
         QString prompt;
         if (currentDatabase) {
             prompt += currentDatabase->metadata()->name();
@@ -158,7 +159,7 @@ void enterInteractiveMode(const QStringList& arguments)
 
         auto cmd = Commands::getCommand(args[0]);
         if (!cmd) {
-            err << QObject::tr("Unknown command %1").arg(args[0]) << endl;
+            errorTextStream << QObject::tr("Unknown command %1").arg(args[0]) << "\n";
             continue;
         } else if (cmd->name == "quit" || cmd->name == "exit") {
             break;
@@ -167,7 +168,6 @@ void enterInteractiveMode(const QStringList& arguments)
         cmd->currentDatabase = currentDatabase;
         cmd->execute(args);
         currentDatabase = cmd->currentDatabase;
-        cmd->currentDatabase.reset();
     }
 
     if (currentDatabase) {
@@ -186,12 +186,9 @@ int main(int argc, char** argv)
     QCoreApplication::setApplicationVersion(KEEPASSXC_VERSION);
 
     Bootstrap::bootstrap();
-    Utils::setDefaultTextStreams();
     Commands::setupCommands(false);
 
-    auto& out = Utils::STDOUT;
-    auto& err = Utils::STDERR;
-
+    TextStream out(stdout);
     QStringList arguments;
     for (int i = 0; i < argc; ++i) {
         arguments << QString(argv[i]);
@@ -226,7 +223,6 @@ int main(int argc, char** argv)
             out << debugInfo << endl;
             return EXIT_SUCCESS;
         }
-        // showHelp exits the application immediately.
         parser.showHelp();
     }
 
@@ -238,18 +234,15 @@ int main(int argc, char** argv)
 
     auto command = Commands::getCommand(commandName);
     if (!command) {
-        err << QObject::tr("Invalid command %1.").arg(commandName) << endl;
-        err << parser.helpText();
-        return EXIT_FAILURE;
+        qCritical("Invalid command %s.", qPrintable(commandName));
+        // showHelp exits the application immediately, so we need to set the
+        // exit code here.
+        parser.showHelp(EXIT_FAILURE);
     }
 
     // Removing the first argument (keepassxc).
     arguments.removeFirst();
     int exitCode = command->execute(arguments);
-
-    if (command->currentDatabase) {
-        command->currentDatabase.reset();
-    }
 
 #if defined(WITH_ASAN) && defined(WITH_LSAN)
     // do leak check here to prevent massive tail of end-of-process leak errors from third-party libraries

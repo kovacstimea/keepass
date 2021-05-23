@@ -23,7 +23,6 @@
 #include "keys/drivers/YubiKey.h"
 
 #include <QObject>
-#include <QSharedPointer>
 #include <QTextStream>
 
 class YkChallengeResponseKeyCLI : public QObject, public ChallengeResponseKey
@@ -33,19 +32,18 @@ class YkChallengeResponseKeyCLI : public QObject, public ChallengeResponseKey
 public:
     static QUuid UUID;
 
-    explicit YkChallengeResponseKeyCLI(YubiKeySlot keySlot, QString interactionMessage, QTextStream& out);
+    explicit YkChallengeResponseKeyCLI(int slot, bool blocking, QString messageInteraction, FILE* outputDescriptor);
 
     QByteArray rawKey() const override;
     bool challenge(const QByteArray& challenge) override;
-
-private slots:
-    void showInteractionMessage();
+    bool challenge(const QByteArray& challenge, unsigned int retries);
 
 private:
     QByteArray m_key;
-    YubiKeySlot m_keySlot;
-    QString m_interactionMessage;
-    QTextStream m_out;
+    int m_slot;
+    bool m_blocking;
+    QString m_messageInteraction;
+    FILE* m_out;
 };
 
 #endif // KEEPASSX_YK_CHALLENGERESPONSEKEYCLI_H

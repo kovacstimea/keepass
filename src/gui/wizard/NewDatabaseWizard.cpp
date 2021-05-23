@@ -16,18 +16,16 @@
  */
 
 #include "NewDatabaseWizard.h"
-#include "NewDatabaseWizardPageDatabaseKey.h"
 #include "NewDatabaseWizardPageEncryption.h"
+#include "NewDatabaseWizardPageMasterKey.h"
 #include "NewDatabaseWizardPageMetaData.h"
 
 #include "core/Database.h"
+#include "core/FilePath.h"
 #include "core/Global.h"
 #include "core/Group.h"
-#include "core/Resources.h"
 #include "format/KeePass2.h"
 
-#include <QFrame>
-#include <QPalette>
 #include <QVBoxLayout>
 
 NewDatabaseWizard::NewDatabaseWizard(QWidget* parent)
@@ -41,7 +39,7 @@ NewDatabaseWizard::NewDatabaseWizard(QWidget* parent)
     // clang-format off
     m_pages << new NewDatabaseWizardPageMetaData()
             << new NewDatabaseWizardPageEncryption()
-            << new NewDatabaseWizardPageDatabaseKey();
+            << new NewDatabaseWizardPageMasterKey();
     // clang-format on
 
     for (const auto& page : asConst(m_pages)) {
@@ -50,21 +48,7 @@ NewDatabaseWizard::NewDatabaseWizard(QWidget* parent)
 
     setWindowTitle(tr("Create a new KeePassXC database..."));
 
-    Q_INIT_RESOURCE(wizard);
-    setPixmap(QWizard::BackgroundPixmap, QPixmap(":/wizard/background-pixmap.png"));
-
-    // Fix MacStyle QWizard page frame too bright in dark mode (QTBUG-70346, QTBUG-71696)
-    QPalette defaultPalette;
-    auto windowColor = defaultPalette.color(QPalette::Window);
-    windowColor.setAlpha(153);
-    auto baseColor = defaultPalette.color(QPalette::Base);
-    baseColor.setAlpha(153);
-
-    auto* pageFrame = findChildren<QFrame*>()[0];
-    auto framePalette = pageFrame->palette();
-    framePalette.setBrush(QPalette::Window, windowColor.lighter(120));
-    framePalette.setBrush(QPalette::Base, baseColor.lighter(120));
-    pageFrame->setPalette(framePalette);
+    setPixmap(QWizard::BackgroundPixmap, QPixmap(filePath()->dataPath("wizard/background-pixmap.png")));
 }
 
 NewDatabaseWizard::~NewDatabaseWizard()
@@ -73,7 +57,11 @@ NewDatabaseWizard::~NewDatabaseWizard()
 
 bool NewDatabaseWizard::validateCurrentPage()
 {
-    return m_pages[currentId()]->validatePage();
+    bool ok = m_pages[currentId()]->validatePage();
+    if (ok && currentId() == m_pages.size() - 1) {
+        m_db->setInitialized(true);
+    }
+    return ok;
 }
 
 /**

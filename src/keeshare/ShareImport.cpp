@@ -233,8 +233,8 @@ namespace
             return {};
         }
         default:
-            qWarning("Prevented untrusted import of signed KeeShare database %s", qPrintable(reference.path));
-            return {reference.path, ShareObserver::Result::Warning, ShareImport::tr("Untrusted import prevented")};
+            Q_ASSERT(false);
+            return {reference.path, ShareObserver::Result::Error, ShareImport::tr("Unexpected error")};
         }
 #endif
     }
@@ -323,7 +323,7 @@ namespace
             return {};
         }
         default:
-            qWarning("Prevented untrusted import of unsigned KeeShare database %s", qPrintable(reference.path));
+            qWarning("Prevent untrusted import");
             return {reference.path, ShareObserver::Result::Warning, ShareImport::tr("Untrusted import prevented")};
         }
 #endif

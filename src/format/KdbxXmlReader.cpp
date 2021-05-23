@@ -262,7 +262,7 @@ void KdbxXmlReader::parseMeta()
         } else if (m_xml.name() == "Color") {
             m_meta->setColor(readColor());
         } else if (m_xml.name() == "MasterKeyChanged") {
-            m_meta->setDatabaseKeyChanged(readDateTime());
+            m_meta->setMasterKeyChanged(readDateTime());
         } else if (m_xml.name() == "MasterKeyChangeRec") {
             m_meta->setMasterKeyChangeRec(readNumber());
         } else if (m_xml.name() == "MasterKeyChangeForce") {
@@ -368,7 +368,7 @@ void KdbxXmlReader::parseIcon()
 
     if (uuidSet && iconSet) {
         // Check for duplicate UUID (corruption)
-        if (m_meta->hasCustomIcon(uuid)) {
+        if (m_meta->containsCustomIcon(uuid)) {
             uuid = QUuid::createUuid();
         }
         m_meta->addCustomIcon(uuid, icon);
@@ -513,9 +513,9 @@ Group* KdbxXmlReader::parseGroup()
                     raiseError(tr("Invalid group icon number"));
                 }
                 iconId = 0;
-            } else if (iconId >= databaseIcons()->count()) {
+            } else if (iconId >= DatabaseIcons::IconCount) {
                 qWarning("KdbxXmlReader::parseGroup: icon id \"%d\" not supported", iconId);
-                iconId = databaseIcons()->count() - 1;
+                iconId = DatabaseIcons::IconCount - 1;
             }
 
             group->setIcon(iconId);
@@ -875,13 +875,11 @@ QPair<QString, QString> KdbxXmlReader::parseEntryBinary(Entry* entry)
     }
 
     if (keySet && valueSet) {
-        if (entry->attachments()->hasKey(key) && entry->attachments()->value(key) != value) {
-            // NOTE: This only impacts KDBX 3.x databases
-            // Prepend a random string to the key to make it unique and prevent data loss
-            key = key.prepend(QUuid::createUuid().toString().mid(1, 8) + "_");
-            qWarning("Duplicate attachment name found, renamed to: %s", qPrintable(key));
+        if (entry->attachments()->hasKey(key)) {
+            raiseError(tr("Duplicate attachment found"));
+        } else {
+            entry->attachments()->set(key, value);
         }
-        entry->attachments()->set(key, value);
     } else {
         raiseError(tr("Entry binary key or value missing"));
     }
@@ -1049,21 +1047,22 @@ QDateTime KdbxXmlReader::readDateTime()
     return Clock::currentDateTimeUtc();
 }
 
-QString KdbxXmlReader::readColor()
+QColor KdbxXmlReader::readColor()
 {
     QString colorStr = readString();
 
     if (colorStr.isEmpty()) {
-        return colorStr;
+        return {};
     }
 
     if (colorStr.length() != 7 || colorStr[0] != '#') {
         if (m_strictMode) {
             raiseError(tr("Invalid color value"));
         }
-        return colorStr;
+        return {};
     }
 
+    QColor color;
     for (int i = 0; i <= 2; ++i) {
         QString rgbPartStr = colorStr.mid(1 + 2 * i, 2);
         bool ok;
@@ -1072,11 +1071,19 @@ QString KdbxXmlReader::readColor()
             if (m_strictMode) {
                 raiseError(tr("Invalid color rgb part"));
             }
-            return colorStr;
+            return {};
+        }
+
+        if (i == 0) {
+            color.setRed(rgbPart);
+        } else if (i == 1) {
+            color.setGreen(rgbPart);
+        } else {
+            color.setBlue(rgbPart);
         }
     }
 
-    return colorStr;
+    return color;
 }
 
 int KdbxXmlReader::readNumber()

@@ -19,16 +19,11 @@
 #ifndef KEEPASSX_YUBIKEY_H
 #define KEEPASSX_YUBIKEY_H
 
-#include <QHash>
 #include <QMutex>
 #include <QObject>
-#include <QTimer>
-
-typedef QPair<unsigned int, int> YubiKeySlot;
-Q_DECLARE_METATYPE(YubiKeySlot);
 
 /**
- * Singleton class to manage the interface to hardware key(s)
+ * Singleton class to manage the interface to the hardware
  */
 class YubiKey : public QObject
 {
@@ -37,65 +32,100 @@ class YubiKey : public QObject
 public:
     enum ChallengeResult
     {
-        ERROR,
-        SUCCESS,
-        WOULDBLOCK
+        ERROR = -1,
+        SUCCESS = 0,
+        WOULDBLOCK,
+        ALREADY_RUNNING
     };
 
+    /**
+     * @brief YubiKey::instance - get instance of singleton
+     * @return instance
+     */
     static YubiKey* instance();
-    bool isInitialized();
 
-    void findValidKeys();
-
-    QList<YubiKeySlot> foundKeys();
-    QString getDisplayName(YubiKeySlot slot);
-
-    ChallengeResult challenge(YubiKeySlot slot, const QByteArray& challenge, QByteArray& response);
-    bool testChallenge(YubiKeySlot slot, bool* wouldBlock = nullptr);
-
-    QString errorMessage();
-
-signals:
     /**
-     * Emitted when a detection process completes. Use the `detectedSlots`
-     * accessor function to get information on the available slots.
+     * @brief YubiKey::init - initialize yubikey library and hardware
+     * @return true on success
+     */
+    bool init();
+
+    /**
+     * @brief YubiKey::deinit - cleanup after init
+     * @return true on success
+     */
+    bool deinit();
+
+    /**
+     * @brief YubiKey::challenge - issue a challenge
      *
-     * @param found - true if a key was found
+     * This operation could block if the YubiKey requires a touch to trigger.
+     *
+     * TODO: Signal to the UI that the system is waiting for challenge response
+     *       touch.
+     *
+     * @param slot YubiKey configuration slot
+     * @param mayBlock operation is allowed to block
+     * @param challenge challenge input to YubiKey
+     * @param response response output from YubiKey
+     * @return challenge result
      */
-    void detectComplete(bool found);
+    ChallengeResult challenge(int slot, bool mayBlock, const QByteArray& challenge, QByteArray& response);
 
     /**
-     * Emitted when user needs to interact with the hardware key to continue
+     * @brief YubiKey::getSerial - serial number of YubiKey
+     * @param serial serial number
+     * @return true on success
      */
-    void userInteractionRequest();
+    bool getSerial(unsigned int& serial);
 
     /**
-     * Emitted before/after a challenge-response is performed
+     * @brief YubiKey::getVendorName - vendor name of token
+     * @return vendor name
      */
-    void challengeStarted();
-    void challengeCompleted();
+    QString getVendorName();
 
     /**
-     * Emitted when an error occurred during challenge/response
+     * @brief YubiKey::detect - probe for attached YubiKeys
      */
-    void challengeError(QString error);
+    void detect();
+
+    /**
+     * @param slot the yubikey slot.
+     * @param errorMessage populated if an error occured.
+     *
+     * @return whether the key is blocking or not.
+     */
+    bool checkSlotIsBlocking(int slot, QString& errorMessage);
+signals:
+    /** Emitted in response to detect() when a device is found
+     *
+     * @slot is the slot number detected
+     * @blocking signifies if the YK is setup in passive mode or if requires
+     *           the user to touch it for a response
+     */
+    void detected(int slot, bool blocking);
+
+    /**
+     * Emitted when detection is complete
+     */
+    void detectComplete();
+
+    /**
+     * Emitted when no Yubikey could be found.
+     */
+    void notFound();
 
 private:
     explicit YubiKey();
-    ~YubiKey();
-
     static YubiKey* m_instance;
 
-    ChallengeResult
-    performChallenge(void* key, int slot, bool mayBlock, const QByteArray& challenge, QByteArray& response);
-    bool performTestChallenge(void* key, int slot, bool* wouldBlock);
-
-    QHash<unsigned int, QList<QPair<int, QString>>> m_foundKeys;
+    // Create void ptr here to avoid ifdef header include mess
+    void* m_yk_void;
+    void* m_ykds_void;
+    bool m_onlyKey;
 
     QMutex m_mutex;
-    QTimer m_interactionTimer;
-    bool m_initialized = false;
-    QString m_error;
 
     Q_DISABLE_COPY(YubiKey)
 };

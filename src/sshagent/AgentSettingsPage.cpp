@@ -18,7 +18,16 @@
 
 #include "AgentSettingsPage.h"
 #include "AgentSettingsWidget.h"
-#include "core/Resources.h"
+#include "core/FilePath.h"
+
+AgentSettingsPage::AgentSettingsPage(DatabaseTabWidget* tabWidget)
+{
+    Q_UNUSED(tabWidget);
+}
+
+AgentSettingsPage::~AgentSettingsPage()
+{
+}
 
 QString AgentSettingsPage::name()
 {
@@ -27,7 +36,7 @@ QString AgentSettingsPage::name()
 
 QIcon AgentSettingsPage::icon()
 {
-    return Resources::instance()->icon("utilities-terminal");
+    return FilePath::instance()->icon("apps", "utilities-terminal");
 }
 
 QWidget* AgentSettingsPage::createWidget()

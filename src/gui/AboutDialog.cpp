@@ -20,7 +20,7 @@
 #include "ui_AboutDialog.h"
 
 #include "config-keepassx.h"
-#include "core/Resources.h"
+#include "core/FilePath.h"
 #include "core/Tools.h"
 #include "crypto/Crypto.h"
 
@@ -30,10 +30,11 @@ static const QString aboutMaintainers = R"(
 <p><ul>
     <li>Jonathan White (<a href="https://github.com/droidmonkey">droidmonkey</a>)</li>
     <li>Janek Bevendorff (<a href="https://github.com/phoerious">phoerious</a>)</li>
-    <li>Sami V&auml;nttinen (<a href="https://github.com/varjolintu">varjolintu</a>)</li>
-    <li>Toni Spets (<a href="https://github.com/hifi">hifi</a>)</li>
+    <li><a href="https://github.com/TheZ3ro">TheZ3ro</a></li>
     <li>Louis-Bertrand (<a href="https://github.com/louib">louib</a>)</li>
-    <li><a href="https://github.com/TheZ3ro">TheZ3ro</a> (retired)</li>
+    <li>Weslly Honorato (<a href="https://github.com/weslly">weslly</a>)</li>
+    <li>Toni Spets (<a href="https://github.com/hifi">hifi</a>)</li>
+    <li>Sami V&auml;nttinen (<a href="https://github.com/varjolintu">varjolintu</a>)</li>
 </ul></p>
 )";
 
@@ -56,68 +57,64 @@ static const QString aboutContributors = R"(
     <li>Riley Moses</li>
     <li>Korbinian Schildmann</li>
     <li>Andreas (nitrohorse)</li>
-    <li>Kernellinux</li>
-    <li>Micha Ober</li>
-    <li>PublicByte</li>
-    <li>Clayton Casciato</li>
 </ul>
 <h3>Notable Code Contributions:</h3>
 <ul>
     <li>droidmonkey</li>
     <li>phoerious</li>
-    <li>louib (CLI)</li>
-    <li>varjolintu (Browser Integration)</li>
+    <li>TheZ3ro</li>
+    <li>louib</li>
+    <li>weslly</li>
+    <li>varjolintu (KeePassXC-Browser)</li>
     <li>hifi (SSH Agent)</li>
     <li>ckieschnick (KeeShare)</li>
     <li>seatedscribe (CSV Import)</li>
-    <li>Aetf (FdoSecrets Storage Server)</li>
-    <li>weslly (macOS improvements)</li>
+    <li>Aetf (Secret Storage Server)</li>
     <li>brainplot (many improvements)</li>
     <li>kneitinger (many improvements)</li>
     <li>frostasm (many improvements)</li>
     <li>fonic (Entry Table View)</li>
     <li>kylemanna (YubiKey)</li>
     <li>c4rlo (Offline HIBP Checker)</li>
-    <li>wolframroesler (HTML Export, Statistics, Password Health, HIBP integration)</li>
+    <li>wolframroesler (HTML Exporter)</li>
     <li>mdaniel (OpVault Importer)</li>
+    <li>keithbennett (KeePassHTTP)</li>
+    <li>Typz (KeePassHTTP)</li>
+    <li>denk-mal (KeePassHTTP)</li>
     <li>angelsl (KDBX 4)</li>
-    <li>TheZ3ro (retired lead)</li>
     <li>debfx (KeePassX)</li>
     <li>BlueIce (KeePassX)</li>
 </ul>
 <h3>Patreon Supporters:</h3>
 <ul>
     <li>Alexanderjb</li>
+    <li>Andreas Kollmann</li>
     <li>Richard Ames</li>
-    <li>SLmanDR</li>
     <li>Christian Rasmussen</li>
-    <li>Tyler Gass</li>
-    <li>Nuutti Toivola</li>
     <li>Gregory Werbin</li>
+    <li>Nuutti Toivola</li>
+    <li>SLmanDR</li>
+    <li>Ashura</li>
+    <li>Tyler Gass</li>
     <li>Lionel Laské</li>
-    <li>Ivar</li>
+    <li>Dmitrii Galinskii</li>
+    <li>Sergei Maximov</li>
+    <li>John-Ivar</li>
+    <li>Clayton Casciato</li>
+    <li>John</li>
     <li>Darren</li>
     <li>Brad</li>
     <li>Mathieu Peltier</li>
-    <li>gonczor</li>
     <li>Oleksii Aleksieiev</li>
+    <li>Daniel Epp</li>
     <li>Gernot Premper</li>
     <li>Julian Stier</li>
-    <li>Daniel Epp</li>
+    <li>gonczor</li>
     <li>Ruben Schade</li>
     <li>Esteban Martinez</li>
-    <li>Niels Ganser</li>
     <li>turin231</li>
     <li>judd</li>
-    <li>Tarek Sherif</li>
-    <li>Bernhard</li>
-    <li>William Komanetsky</li>
-    <li>Clark Henry</li>
-    <li>Justin Carroll</li>
-    <li>Shintaro Matsushima</li>
-    <li>Larry Siden</li>
-    <li>Thammachart Chinvarapon</li>
-    <li>Patrick Evans</li>
+    <li>Niels Ganser</li>
 </ul>
 <h3>Translations:</h3>
 <ul>
@@ -210,7 +207,7 @@ AboutDialog::AboutDialog(QWidget* parent)
     nameLabelFont.setPointSize(nameLabelFont.pointSize() + 4);
     m_ui->nameLabel->setFont(nameLabelFont);
 
-    m_ui->iconLabel->setPixmap(resources()->applicationIcon().pixmap(48));
+    m_ui->iconLabel->setPixmap(filePath()->applicationIcon().pixmap(48));
 
     QString debugInfo = Tools::debugInfo().append("\n").append(Crypto::debugInfo());
     m_ui->debugInfo->setPlainText(debugInfo);
@@ -221,8 +218,6 @@ AboutDialog::AboutDialog(QWidget* parent)
     setAttribute(Qt::WA_DeleteOnClose);
     connect(m_ui->buttonBox, SIGNAL(rejected()), SLOT(close()));
     connect(m_ui->copyToClipboard, SIGNAL(clicked()), SLOT(copyToClipboard()));
-
-    m_ui->buttonBox->button(QDialogButtonBox::Close)->setDefault(true);
 }
 
 AboutDialog::~AboutDialog()

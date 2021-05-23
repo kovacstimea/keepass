@@ -21,12 +21,12 @@
 
 #include <QImage>
 #include <QPixmap>
+#include <QPixmapCache>
 #include <QPointer>
 
 #include "core/CustomData.h"
 #include "core/Database.h"
 #include "core/Entry.h"
-#include "core/Global.h"
 #include "core/TimeInfo.h"
 
 class Group : public QObject
@@ -56,7 +56,6 @@ public:
         CloneNewUuid = 1, // generate a random uuid for the clone
         CloneResetTimeInfo = 2, // set all TimeInfo attributes to the current time
         CloneIncludeEntries = 4, // clone the group entries
-        CloneDefault = CloneNewUuid | CloneResetTimeInfo | CloneIncludeEntries,
     };
     Q_DECLARE_FLAGS(CloneFlags, CloneFlag)
 
@@ -86,7 +85,8 @@ public:
     QString name() const;
     QString notes() const;
     QImage icon() const;
-    QPixmap iconPixmap(IconSize size = IconSize::Default) const;
+    QPixmap iconPixmap() const;
+    QPixmap iconScaledPixmap() const;
     int iconNumber() const;
     const QUuid& iconUuid() const;
     const TimeInfo& timeInfo() const;
@@ -109,6 +109,8 @@ public:
 
     static const int DefaultIconNumber;
     static const int RecycleBinIconNumber;
+    static CloneFlags DefaultCloneFlags;
+    static Entry::CloneFlags DefaultEntryCloneFlags;
     static const QString RootAutoTypeSequence;
 
     Group* findChildByName(const QString& name);
@@ -157,16 +159,14 @@ public:
     QSet<QUuid> customIconsRecursive() const;
     QList<QString> usernamesRecursive(int topN = -1) const;
 
-    Group* clone(Entry::CloneFlags entryFlags = Entry::CloneDefault,
-                 Group::CloneFlags groupFlags = Group::CloneDefault) const;
+    Group* clone(Entry::CloneFlags entryFlags = DefaultEntryCloneFlags,
+                 CloneFlags groupFlags = DefaultCloneFlags) const;
 
     void copyDataFrom(const Group* other);
     QString print(bool recursive = false, bool flatten = false, int depth = 0);
 
     void addEntry(Entry* entry);
     void removeEntry(Entry* entry);
-    void moveEntryUp(Entry* entry);
-    void moveEntryDown(Entry* entry);
 
     void applyGroupIconOnCreateTo(Entry* entry);
     void applyGroupIconTo(Entry* entry);
@@ -185,15 +185,10 @@ signals:
     void aboutToMove(Group* group, Group* toGroup, int index);
     void groupMoved();
     void groupModified();
-    void groupNonDataChange();
     void entryAboutToAdd(Entry* entry);
     void entryAdded(Entry* entry);
     void entryAboutToRemove(Entry* entry);
     void entryRemoved(Entry* entry);
-    void entryAboutToMoveUp(int row);
-    void entryMovedUp();
-    void entryAboutToMoveDown(int row);
-    void entryMovedDown();
     void entryDataChanged(Entry* entry);
 
 private slots:

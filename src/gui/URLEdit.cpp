@@ -21,15 +21,16 @@
 #include <QRegularExpression>
 
 #include "core/Config.h"
-#include "core/Resources.h"
+#include "core/FilePath.h"
 #include "core/Tools.h"
 #include "gui/Font.h"
-#include "gui/styles/StateColorPalette.h"
+
+const QColor URLEdit::ErrorColor = QColor(255, 125, 125);
 
 URLEdit::URLEdit(QWidget* parent)
     : QLineEdit(parent)
 {
-    const QIcon errorIcon = resources()->icon("dialog-error");
+    const QIcon errorIcon = filePath()->icon("status", "dialog-error");
     m_errorAction = addAction(errorIcon, QLineEdit::TrailingPosition);
     m_errorAction->setVisible(false);
     m_errorAction->setToolTip(tr("Invalid URL"));
@@ -49,9 +50,7 @@ void URLEdit::updateStylesheet()
     const QString stylesheetTemplate("QLineEdit { background: %1; }");
 
     if (!Tools::checkUrlValid(text())) {
-        StateColorPalette statePalette;
-        QColor color = statePalette.color(StateColorPalette::ColorRole::Error);
-        setStyleSheet(stylesheetTemplate.arg(color.name()));
+        setStyleSheet(stylesheetTemplate.arg(ErrorColor.name()));
         m_errorAction->setVisible(true);
     } else {
         m_errorAction->setVisible(false);

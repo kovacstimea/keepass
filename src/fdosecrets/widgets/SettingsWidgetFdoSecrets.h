@@ -18,10 +18,7 @@
 #ifndef KEEPASSXC_SETTINGSWIDGETFDOSECRETS_H
 #define KEEPASSXC_SETTINGSWIDGETFDOSECRETS_H
 
-#include "gui/MessageWidget.h"
-
 #include <QScopedPointer>
-#include <QTimer>
 #include <QWidget>
 
 class QAbstractItemView;
@@ -53,14 +50,6 @@ public slots:
     void loadSettings();
     void saveSettings();
 
-private slots:
-    void checkDBusName();
-    void updateServiceState();
-
-protected:
-    void showEvent(QShowEvent* event) override;
-    void hideEvent(QHideEvent* event) override;
-
 private:
     void setupView(QAbstractItemView* view, int manageColumn, int editorTypeId, QItemEditorCreatorBase* creator);
 
@@ -68,7 +57,6 @@ private:
     QScopedPointer<Ui::SettingsWidgetFdoSecrets> m_ui;
     QScopedPointer<QItemEditorFactory> m_factory;
     FdoSecretsPlugin* m_plugin;
-    QTimer m_checkTimer;
 };
 
 #endif // KEEPASSXC_SETTINGSWIDGETFDOSECRETS_H

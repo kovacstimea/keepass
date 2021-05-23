@@ -71,19 +71,16 @@ void Kdf::randomizeSeed()
 
 int Kdf::benchmark(int msec) const
 {
-    // Run the benchmark twice using half the time for each run
-    BenchmarkThread thread(msec / 2, this);
-    int rounds = 0;
+    BenchmarkThread thread1(msec, this);
+    BenchmarkThread thread2(msec, this);
 
-    thread.start();
-    thread.wait();
-    rounds += thread.rounds();
+    thread1.start();
+    thread2.start();
 
-    thread.start();
-    thread.wait();
-    rounds += thread.rounds();
+    thread1.wait();
+    thread2.wait();
 
-    return qMax(1, rounds);
+    return qMax(1, (thread1.rounds() + thread2.rounds()) / 2);
 }
 
 Kdf::BenchmarkThread::BenchmarkThread(int msec, const Kdf* kdf)

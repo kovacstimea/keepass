@@ -21,9 +21,8 @@
 #include "core/Group.h"
 #include "core/Tools.h"
 
-EntrySearcher::EntrySearcher(bool caseSensitive, bool skipProtected)
+EntrySearcher::EntrySearcher(bool caseSensitive)
     : m_caseSensitive(caseSensitive)
-    , m_skipProtected(skipProtected)
     , m_termParser(R"re(([-!*+]+)?(?:(\w*):)?(?:(?=")"((?:[^"\\]|\\.)*)"|([^ ]*))( |$))re")
 // Group 1 = modifiers, Group 2 = field, Group 3 = quoted string, Group 4 = unquoted string
 {
@@ -55,6 +54,7 @@ QList<Entry*> EntrySearcher::search(const QList<SearchTerm>& searchTerms, const 
 QList<Entry*> EntrySearcher::search(const QString& searchString, const Group* baseGroup, bool forceSearch)
 {
     Q_ASSERT(baseGroup);
+
     parseSearchTerms(searchString);
     return repeat(baseGroup, forceSearch);
 }
@@ -73,7 +73,7 @@ QList<Entry*> EntrySearcher::repeat(const Group* baseGroup, bool forceSearch)
     QList<Entry*> results;
     for (const auto group : baseGroup->groupsRecursive(true)) {
         if (forceSearch || group->resolveSearchingEnabled()) {
-            for (const auto entry : group->entries()) {
+            for (auto* entry : group->entries()) {
                 if (searchEntryImpl(entry)) {
                     results.append(entry);
                 }
@@ -137,23 +137,19 @@ void EntrySearcher::setCaseSensitive(bool state)
     m_caseSensitive = state;
 }
 
-bool EntrySearcher::isCaseSensitive() const
+bool EntrySearcher::isCaseSensitive()
 {
     return m_caseSensitive;
 }
 
-bool EntrySearcher::searchEntryImpl(const Entry* entry)
+bool EntrySearcher::searchEntryImpl(Entry* entry)
 {
     // Pre-load in case they are needed
     auto attributes_keys = entry->attributes()->customKeys();
     auto attributes = QStringList(attributes_keys + entry->attributes()->values(attributes_keys));
     auto attachments = QStringList(entry->attachments()->keys());
-    // Build a group hierarchy to allow searching for e.g. /group1/subgroup*
-    auto hierarchy = entry->group()->hierarchy().join('/').prepend("/");
 
-    // By default, empty term matches every entry.
-    // However when skipping protected fields, we will recject everything instead
-    bool found = !m_skipProtected;
+    bool found;
     for (const auto& term : m_searchTerms) {
         switch (term.field) {
         case Field::Title:
@@ -163,9 +159,6 @@ bool EntrySearcher::searchEntryImpl(const Entry* entry)
             found = term.regex.match(entry->resolvePlaceholder(entry->username())).hasMatch();
             break;
         case Field::Password:
-            if (m_skipProtected) {
-                continue;
-            }
             found = term.regex.match(entry->resolvePlaceholder(entry->password())).hasMatch();
             break;
         case Field::Url:
@@ -181,19 +174,12 @@ bool EntrySearcher::searchEntryImpl(const Entry* entry)
             found = !attachments.filter(term.regex).empty();
             break;
         case Field::AttributeValue:
-            if (m_skipProtected && entry->attributes()->isProtected(term.word)) {
+            // skip protected attributes
+            if (entry->attributes()->isProtected(term.word)) {
                 continue;
             }
             found = entry->attributes()->contains(term.word)
                     && term.regex.match(entry->attributes()->value(term.word)).hasMatch();
-            break;
-        case Field::Group:
-            // Match against the full hierarchy if the word contains a '/' otherwise just the group name
-            if (term.word.contains('/')) {
-                found = term.regex.match(hierarchy).hasMatch();
-            } else {
-                found = term.regex.match(entry->group()->name()).hasMatch();
-            }
             break;
         default:
             // Terms without a specific field try to match title, username, url, and notes
@@ -203,18 +189,13 @@ bool EntrySearcher::searchEntryImpl(const Entry* entry)
                     || term.regex.match(entry->notes()).hasMatch();
         }
 
-        // negate the result if exclude:
-        // * if found and not excluding, the entry matches
-        // * if didn't found but excluding, the entry also matches
-        found = (found && !term.exclude) || (!found && term.exclude);
-
-        // short circuit if we failed the match
-        if (!found) {
+        // Short circuit if we failed to match or we matched and are excluding this term
+        if ((!found && !term.exclude) || (found && term.exclude)) {
             return false;
         }
     }
 
-    return found;
+    return true;
 }
 
 void EntrySearcher::parseSearchTerms(const QString& searchString)
@@ -228,8 +209,7 @@ void EntrySearcher::parseSearchTerms(const QString& searchString)
         {QStringLiteral("title"), Field::Title},
         {QStringLiteral("u"), Field::Username}, // u: stands for username rather than url
         {QStringLiteral("url"), Field::Url},
-        {QStringLiteral("username"), Field::Username},
-        {QStringLiteral("group"), Field::Group}};
+        {QStringLiteral("username"), Field::Username}};
 
     m_searchTerms.clear();
     auto results = m_termParser.globalMatch(searchString);

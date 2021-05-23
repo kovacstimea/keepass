@@ -24,6 +24,11 @@
 
 namespace Keys
 {
+
+    constexpr auto FdoSecretsEnabled = "FdoSecrets/Enabled";
+    constexpr auto FdoSecretsShowNotification = "FdoSecrets/ShowNotification";
+    constexpr auto FdoSecretsNoConfirmDeleteItem = "FdoSecrets/NoConfirmDeleteItem";
+
     namespace Db
     {
         constexpr auto FdoSecretsExposedGroup = "FDO_SECRETS_EXPOSED_GROUP";
@@ -46,32 +51,32 @@ namespace FdoSecrets
 
     bool FdoSecretsSettings::isEnabled() const
     {
-        return config()->get(Config::FdoSecrets_Enabled).toBool();
+        return config()->get(Keys::FdoSecretsEnabled, false).toBool();
     }
 
     void FdoSecretsSettings::setEnabled(bool enabled)
     {
-        config()->set(Config::FdoSecrets_Enabled, enabled);
+        config()->set(Keys::FdoSecretsEnabled, enabled);
     }
 
     bool FdoSecretsSettings::showNotification() const
     {
-        return config()->get(Config::FdoSecrets_ShowNotification).toBool();
+        return config()->get(Keys::FdoSecretsShowNotification, true).toBool();
     }
 
     void FdoSecretsSettings::setShowNotification(bool show)
     {
-        config()->set(Config::FdoSecrets_ShowNotification, show);
+        config()->set(Keys::FdoSecretsShowNotification, show);
     }
 
     bool FdoSecretsSettings::noConfirmDeleteItem() const
     {
-        return config()->get(Config::FdoSecrets_NoConfirmDeleteItem).toBool();
+        return config()->get(Keys::FdoSecretsNoConfirmDeleteItem, false).toBool();
     }
 
     void FdoSecretsSettings::setNoConfirmDeleteItem(bool noConfirm)
     {
-        config()->set(Config::FdoSecrets_NoConfirmDeleteItem, noConfirm);
+        config()->set(Keys::FdoSecretsNoConfirmDeleteItem, noConfirm);
     }
 
     QUuid FdoSecretsSettings::exposedGroup(const QSharedPointer<Database>& db) const

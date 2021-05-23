@@ -31,7 +31,10 @@ TotpDialog::TotpDialog(QWidget* parent, Entry* entry)
     , m_ui(new Ui::TotpDialog())
     , m_entry(entry)
 {
-    setAttribute(Qt::WA_DeleteOnClose);
+    if (!m_entry->hasTotp()) {
+        close();
+        return;
+    }
 
     m_ui->setupUi(this);
 
@@ -39,10 +42,13 @@ TotpDialog::TotpDialog(QWidget* parent, Entry* entry)
     resetCounter();
     updateProgressBar();
 
+    connect(parent, SIGNAL(databaseLocked()), SLOT(close()));
     connect(&m_totpUpdateTimer, SIGNAL(timeout()), this, SLOT(updateProgressBar()));
     connect(&m_totpUpdateTimer, SIGNAL(timeout()), this, SLOT(updateSeconds()));
     m_totpUpdateTimer.start(m_step * 10);
     updateTotp();
+
+    setAttribute(Qt::WA_DeleteOnClose);
 
     new QShortcut(QKeySequence(QKeySequence::Copy), this, SLOT(copyToClipboard()));
 
@@ -59,10 +65,10 @@ TotpDialog::~TotpDialog()
 void TotpDialog::copyToClipboard()
 {
     clipboard()->setText(m_entry->totp());
-    if (config()->get(Config::HideWindowOnCopy).toBool()) {
-        if (config()->get(Config::MinimizeOnCopy).toBool()) {
-            getMainWindow()->minimizeOrHide();
-        } else if (config()->get(Config::DropToBackgroundOnCopy).toBool()) {
+    if (config()->get("HideWindowOnCopy").toBool()) {
+        if (config()->get("MinimizeOnCopy").toBool()) {
+            getMainWindow()->showMinimized();
+        } else if (config()->get("DropToBackgroundOnCopy").toBool()) {
             getMainWindow()->lower();
             window()->lower();
         }

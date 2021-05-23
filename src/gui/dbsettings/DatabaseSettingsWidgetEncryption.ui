@@ -95,6 +95,12 @@
             <property name="accessibleName">
              <string>Decryption time in seconds</string>
             </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
             <property name="singleStep">
              <number>1</number>
             </property>
@@ -118,9 +124,9 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
             <item>
-             <widget class="QLabel" name="minTimeLabel">
+             <widget class="QLabel" name="label_4">
               <property name="text">
-               <string>?? ms</string>
+               <string>100 ms</string>
               </property>
              </widget>
             </item>
@@ -138,9 +144,9 @@
              </spacer>
             </item>
             <item>
-             <widget class="QLabel" name="maxTimeLabel">
+             <widget class="QLabel" name="label_3">
               <property name="text">
-               <string>? s</string>
+               <string>5 s</string>
               </property>
              </widget>
             </item>
@@ -320,6 +326,9 @@
            <property name="focusPolicy">
             <enum>Qt::WheelFocus</enum>
            </property>
+           <property name="text">
+            <string>Benchmark 1-second delay</string>
+           </property>
           </widget>
          </item>
          <item>
@@ -420,17 +429,6 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>activateChangeDecryptionTimeButton</tabstop>
-  <tabstop>decryptionTimeSlider</tabstop>
-  <tabstop>compatibilitySelection</tabstop>
-  <tabstop>algorithmComboBox</tabstop>
-  <tabstop>kdfComboBox</tabstop>
-  <tabstop>transformRoundsSpinBox</tabstop>
-  <tabstop>transformBenchmarkButton</tabstop>
-  <tabstop>memorySpinBox</tabstop>
-  <tabstop>parallelismSpinBox</tabstop>
- </tabstops>
  <resources/>
  <connections/>
 </ui>

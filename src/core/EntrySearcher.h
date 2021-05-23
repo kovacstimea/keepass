@@ -38,8 +38,7 @@ public:
         Notes,
         AttributeKV,
         Attachment,
-        AttributeValue,
-        Group
+        AttributeValue
     };
 
     struct SearchTerm
@@ -51,7 +50,7 @@ public:
         bool exclude;
     };
 
-    explicit EntrySearcher(bool caseSensitive = false, bool skipProtected = false);
+    explicit EntrySearcher(bool caseSensitive = false);
 
     QList<Entry*> search(const QList<SearchTerm>& searchTerms, const Group* baseGroup, bool forceSearch = false);
     QList<Entry*> search(const QString& searchString, const Group* baseGroup, bool forceSearch = false);
@@ -62,14 +61,13 @@ public:
     QList<Entry*> repeatEntries(const QList<Entry*>& entries);
 
     void setCaseSensitive(bool state);
-    bool isCaseSensitive() const;
+    bool isCaseSensitive();
 
 private:
-    bool searchEntryImpl(const Entry* entry);
+    bool searchEntryImpl(Entry* entry);
     void parseSearchTerms(const QString& searchString);
 
     bool m_caseSensitive;
-    bool m_skipProtected;
     QRegularExpression m_termParser;
     QList<SearchTerm> m_searchTerms;
 
