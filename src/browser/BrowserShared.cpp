@@ -37,7 +37,7 @@ namespace BrowserShared
                               : path + serverName;
 #elif defined(Q_OS_WIN)
         // Windows uses named pipes
-        return serverName + "_" + qgetenv("USERNAME");
+        return serverName;
 #else // Q_OS_MACOS and others
         return QStandardPaths::writableLocation(QStandardPaths::TempLocation) + serverName;
 #endif

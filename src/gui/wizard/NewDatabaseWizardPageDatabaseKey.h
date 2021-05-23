@@ -28,6 +28,9 @@ public:
     explicit NewDatabaseWizardPageDatabaseKey(QWidget* parent = nullptr);
     Q_DISABLE_COPY(NewDatabaseWizardPageDatabaseKey);
     ~NewDatabaseWizardPageDatabaseKey() override;
+
+private slots:
+    void updateWindowSize();
 };
 
 #endif // KEEPASSXC_NEWDATABASEWIZARDPAGEDATABASEKEY_H

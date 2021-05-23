@@ -26,7 +26,6 @@ class LightStyle : public BaseStyle
     Q_OBJECT
 
 public:
-    LightStyle();
     QPalette standardPalette() const override;
 
     using BaseStyle::polish;

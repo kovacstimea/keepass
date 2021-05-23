@@ -928,10 +928,10 @@ void TestCli::testExport()
     setInput("a");
     execCmd(exportCmd, {"export", "-f", "csv", m_dbFile->fileName()});
     QByteArray csvHeader = m_stdout->readLine();
-    QVERIFY(csvHeader.contains(QByteArray("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"")));
+    QCOMPARE(csvHeader, QByteArray("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"\n"));
     QByteArray csvData = m_stdout->readAll();
     QVERIFY(csvData.contains(QByteArray(
-        "\"NewDatabase\",\"Sample Entry\",\"User Name\",\"Password\",\"http://www.somesite.com/\",\"Notes\"")));
+        "\"NewDatabase\",\"Sample Entry\",\"User Name\",\"Password\",\"http://www.somesite.com/\",\"Notes\"\n")));
 
     // test invalid format
     setInput("a");

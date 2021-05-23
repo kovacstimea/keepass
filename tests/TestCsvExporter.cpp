@@ -23,13 +23,11 @@
 
 #include "crypto/Crypto.h"
 #include "format/CsvExporter.h"
-#include "totp/totp.h"
 
 QTEST_GUILESS_MAIN(TestCsvExporter)
 
 const QString TestCsvExporter::ExpectedHeaderLine =
-    QString("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\",\"TOTP\",\"Icon\",\"Last "
-            "Modified\",\"Created\"\n");
+    QString("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"\n");
 
 void TestCsvExporter::init()
 {
@@ -59,23 +57,17 @@ void TestCsvExporter::testExport()
     entry->setPassword("Test Password");
     entry->setUrl("http://test.url");
     entry->setNotes("Test Notes");
-    entry->setTotp(Totp::createSettings("DFDF", Totp::DEFAULT_DIGITS, Totp::DEFAULT_STEP));
-    entry->setIcon(5);
 
     QBuffer buffer;
     QVERIFY(buffer.open(QIODevice::ReadWrite));
     m_csvExporter->exportDatabase(&buffer, m_db);
-    auto exported = QString::fromUtf8(buffer.buffer());
 
     QString expectedResult = QString()
                                  .append(ExpectedHeaderLine)
                                  .append("\"Passwords/Test Group Name\",\"Test Entry Title\",\"Test Username\",\"Test "
-                                         "Password\",\"http://test.url\",\"Test Notes\"");
+                                         "Password\",\"http://test.url\",\"Test Notes\"\n");
 
-    QVERIFY(exported.startsWith(expectedResult));
-    exported.remove(expectedResult);
-    QVERIFY(exported.contains("otpauth://"));
-    QVERIFY(exported.contains(",\"5\","));
+    QCOMPARE(QString::fromUtf8(buffer.buffer().constData()), expectedResult);
 }
 
 void TestCsvExporter::testEmptyDatabase()
@@ -103,9 +95,10 @@ void TestCsvExporter::testNestedGroups()
     QBuffer buffer;
     QVERIFY(buffer.open(QIODevice::ReadWrite));
     m_csvExporter->exportDatabase(&buffer, m_db);
-    auto exported = QString::fromUtf8(buffer.buffer());
-    QVERIFY(exported.startsWith(
+
+    QCOMPARE(
+        QString::fromUtf8(buffer.buffer().constData()),
         QString()
             .append(ExpectedHeaderLine)
-            .append("\"Passwords/Test Group Name/Test Sub Group Name\",\"Test Entry Title\",\"\",\"\",\"\",\"\"")));
+            .append("\"Passwords/Test Group Name/Test Sub Group Name\",\"Test Entry Title\",\"\",\"\",\"\",\"\"\n"));
 }

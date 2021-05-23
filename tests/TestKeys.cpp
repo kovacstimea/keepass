@@ -69,35 +69,21 @@ void TestKeys::testComposite()
 void TestKeys::testFileKey()
 {
     QFETCH(FileKey::Type, type);
-    QFETCH(QString, keyExt);
-    QFETCH(bool, fileKeyOk);
+    QFETCH(QString, typeString);
 
-    QString name = QString("FileKey").append(QTest::currentDataTag());
+    QString name = QString("FileKey").append(typeString);
 
     KeePass2Reader reader;
 
     QString dbFilename = QString("%1/%2.kdbx").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
-    QString keyFilename = QString("%1/%2.%3").arg(QString(KEEPASSX_TEST_DATA_DIR), name, keyExt);
+    QString keyFilename = QString("%1/%2.key").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
 
     auto compositeKey = QSharedPointer<CompositeKey>::create();
     auto fileKey = QSharedPointer<FileKey>::create();
-    QString error;
-    QVERIFY(fileKey->load(keyFilename, &error) == fileKeyOk);
-    QVERIFY(error.isEmpty() == fileKeyOk);
-    QCOMPARE(fileKey->type(), type);
-
-    // Test for same behaviour on code path without error parameter
-    auto fileKeyNoErrorParam = QSharedPointer<FileKey>::create();
-    QVERIFY(fileKeyNoErrorParam->load(keyFilename) == fileKeyOk);
-    QCOMPARE(fileKeyNoErrorParam->type(), type);
-
-    QCOMPARE(fileKey->rawKey(), fileKeyNoErrorParam->rawKey());
-
-    if (!fileKeyOk) {
-        return;
-    }
-
+    QVERIFY(fileKey->load(keyFilename));
     QCOMPARE(fileKey->rawKey().size(), 32);
+
+    QCOMPARE(fileKey->type(), type);
 
     compositeKey->addKey(fileKey);
 
@@ -111,16 +97,12 @@ void TestKeys::testFileKey()
 void TestKeys::testFileKey_data()
 {
     QTest::addColumn<FileKey::Type>("type");
-    QTest::addColumn<QString>("keyExt");
-    QTest::addColumn<bool>("fileKeyOk");
-    QTest::newRow("Xml")             << FileKey::KeePass2XML    << QString("key")  << true;
-    QTest::newRow("XmlBrokenBase64") << FileKey::KeePass2XML    << QString("key")  << false;
-    QTest::newRow("XmlV2")           << FileKey::KeePass2XMLv2  << QString("keyx") << true;
-    QTest::newRow("XmlV2HashFail")   << FileKey::KeePass2XMLv2  << QString("keyx") << false;
-    QTest::newRow("XmlV2BrokenHex")  << FileKey::KeePass2XMLv2  << QString("keyx") << false;
-    QTest::newRow("Binary")          << FileKey::FixedBinary    << QString("key")  << true;
-    QTest::newRow("Hex")             << FileKey::FixedBinaryHex << QString("key")  << true;
-    QTest::newRow("Hashed")          << FileKey::Hashed         << QString("key")  << true;
+    QTest::addColumn<QString>("typeString");
+    QTest::newRow("Xml")             << FileKey::KeePass2XML    << QString("Xml");
+    QTest::newRow("XmlBrokenBase64") << FileKey::Hashed         << QString("XmlBrokenBase64");
+    QTest::newRow("Binary")          << FileKey::FixedBinary    << QString("Binary");
+    QTest::newRow("Hex")             << FileKey::FixedBinaryHex << QString("Hex");
+    QTest::newRow("Hashed")          << FileKey::Hashed         << QString("Hashed");
 }
 // clang-format on
 
@@ -129,12 +111,12 @@ void TestKeys::testCreateFileKey()
     QBuffer keyBuffer1;
     keyBuffer1.open(QBuffer::ReadWrite);
 
-    FileKey::createRandom(&keyBuffer1, 128);
+    FileKey::create(&keyBuffer1, 128);
     QCOMPARE(keyBuffer1.size(), 128);
 
     QBuffer keyBuffer2;
     keyBuffer2.open(QBuffer::ReadWrite);
-    FileKey::createRandom(&keyBuffer2, 64);
+    FileKey::create(&keyBuffer2, 64);
     QCOMPARE(keyBuffer2.size(), 64);
 }
 
@@ -145,7 +127,7 @@ void TestKeys::testCreateAndOpenFileKey()
     QBuffer keyBuffer;
     keyBuffer.open(QBuffer::ReadWrite);
 
-    FileKey::createRandom(&keyBuffer);
+    FileKey::create(&keyBuffer);
     keyBuffer.reset();
 
     auto fileKey = QSharedPointer<FileKey>::create();
@@ -184,7 +166,7 @@ void TestKeys::testFileKeyHash()
     QBuffer keyBuffer;
     keyBuffer.open(QBuffer::ReadWrite);
 
-    FileKey::createRandom(&keyBuffer);
+    FileKey::create(&keyBuffer);
 
     CryptoHash cryptoHash(CryptoHash::Sha256);
     cryptoHash.addData(keyBuffer.data());

@@ -26,7 +26,6 @@ class DarkStyle : public BaseStyle
     Q_OBJECT
 
 public:
-    DarkStyle();
     QPalette standardPalette() const override;
 
     using BaseStyle::polish;

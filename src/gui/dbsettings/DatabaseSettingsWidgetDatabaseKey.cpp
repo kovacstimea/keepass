@@ -216,6 +216,8 @@ void DatabaseSettingsWidgetDatabaseKey::setAdditionalKeyOptionsVisible(bool show
 {
     m_additionalKeyOptionsToggle->setVisible(!show);
     m_additionalKeyOptions->setVisible(show);
+    m_additionalKeyOptions->layout()->setSizeConstraint(QLayout::SetMinimumSize);
+    emit sizeChanged();
 }
 
 bool DatabaseSettingsWidgetDatabaseKey::addToCompositeKey(KeyComponentWidget* widget,

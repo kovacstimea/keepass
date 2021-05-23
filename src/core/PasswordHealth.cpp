@@ -106,7 +106,7 @@ HealthChecker::HealthChecker(QSharedPointer<Database> db)
 {
     // Build the cache of re-used passwords
     for (const auto* entry : db->rootGroup()->entriesRecursive()) {
-        if (!entry->isRecycled() && !entry->isAttributeReference("Password")) {
+        if (!entry->isRecycled()) {
             m_reuse[entry->password()]
                 << QApplication::tr("Used in %1/%2").arg(entry->group()->hierarchy().join('/'), entry->title());
         }
@@ -173,14 +173,12 @@ QSharedPointer<PasswordHealth> HealthChecker::evaluate(const Entry* entry) const
             if (health->score() > 60) {
                 health->setScore(60);
             }
-            // clang-format off
             health->adjustScore((30 - days) * -2);
             health->addScoreReason(days <= 2 ? QApplication::tr("Password is about to expire")
                                              : days <= 10 ? QApplication::tr("Password expires in %1 days").arg(days)
                                                           : QApplication::tr("Password will expire soon"));
             health->addScoreDetails(QApplication::tr("Password expires on %1")
                                         .arg(entry->timeInfo().expiryTime().toString(Qt::DefaultLocaleShortDate)));
-            //clang-format on
         }
     }
 

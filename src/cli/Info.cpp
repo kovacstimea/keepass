@@ -27,7 +27,7 @@
 
 Info::Info()
 {
-    name = QString("db-info");
+    name = QString("db-show");
     description = QObject::tr("Show a database's information.");
 }
 

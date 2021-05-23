@@ -36,11 +36,6 @@ public:
     virtual bool isDarkMode() const = 0;
 
     /**
-     * @return OS task / menu bar is dark.
-     */
-    virtual bool isStatusBarDark() const = 0;
-
-    /**
      * @return KeePassXC set to launch at system startup (autostart).
      */
     virtual bool isLaunchAtStartupEnabled() const = 0;
@@ -54,17 +49,6 @@ public:
      * @return OS caps lock enabled.
      */
     virtual bool isCapslockEnabled() = 0;
-
-signals:
-    /**
-     * Indicates platform UI theme change (light mode to dark mode).
-     */
-    void interfaceThemeChanged();
-
-    /*
-     * Indicates a change in the tray / statusbar theme.
-     */
-    void statusbarThemeChanged();
 
 protected:
     explicit OSUtilsBase(QObject* parent = nullptr);
