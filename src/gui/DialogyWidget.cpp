@@ -24,38 +24,38 @@
 DialogyWidget::DialogyWidget(QWidget* parent)
     : QWidget(parent)
 {
-    setAutoFillBackground(true);
 }
 
 void DialogyWidget::keyPressEvent(QKeyEvent* e)
 {
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_MAC
     if (e->modifiers() == Qt::ControlModifier && e->key() == Qt::Key_Period) {
         if (!clickButton(QDialogButtonBox::Cancel)) {
             e->ignore();
         }
-    } else
+    }
+    else
 #endif
-        if (!e->modifiers() || e->modifiers() == Qt::ControlModifier
-            || (e->modifiers() & Qt::KeypadModifier && e->key() == Qt::Key_Enter)) {
+    if (!e->modifiers() || (e->modifiers() & Qt::KeypadModifier && e->key() == Qt::Key_Enter)) {
         switch (e->key()) {
-        case Qt::Key_Enter:
-        case Qt::Key_Return:
-            if (!clickButton(QDialogButtonBox::Ok)) {
-                e->ignore();
-            }
-            break;
-        case Qt::Key_Escape:
-            if (!clickButton(QDialogButtonBox::Cancel)) {
-                if (!clickButton(QDialogButtonBox::Close)) {
+            case Qt::Key_Enter:
+            case Qt::Key_Return:
+                if (!clickButton(QDialogButtonBox::Ok)) {
                     e->ignore();
                 }
-            }
-            break;
-        default:
-            e->ignore();
+                break;
+            case Qt::Key_Escape:
+                if (!clickButton(QDialogButtonBox::Cancel)) {
+                    if (!clickButton(QDialogButtonBox::Close)) {
+                        e->ignore();
+                    }
+                }
+                break;
+            default:
+                e->ignore();
         }
-    } else {
+    }
+    else {
         e->ignore();
     }
 }
@@ -73,7 +73,8 @@ bool DialogyWidget::clickButton(QDialogButtonBox::StandardButton standardButton)
     }
 
     QList<QDialogButtonBox*> buttonBoxes = findChildren<QDialogButtonBox*>();
-    for (auto buttonBox : buttonBoxes) {
+    for (int i = 0; i < buttonBoxes.size(); ++i) {
+        QDialogButtonBox* buttonBox = buttonBoxes.at(i);
         pb = buttonBox->button(standardButton);
         if (pb && pb->isVisible() && pb->isEnabled()) {
             pb->click();

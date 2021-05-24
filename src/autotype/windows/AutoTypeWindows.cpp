@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2016 Lennart Glauer <mail@lennart-glauer.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -94,10 +93,10 @@ void AutoTypePlatformWin::unregisterGlobalShortcut(Qt::Key key, Qt::KeyboardModi
 //
 int AutoTypePlatformWin::platformEventFilter(void* event)
 {
-    MSG* msg = static_cast<MSG*>(event);
+    MSG *msg = static_cast<MSG *>(event);
 
     if (msg->message == WM_HOTKEY && msg->wParam == HOTKEY_ID) {
-        emit globalShortcutTriggered();
+        Q_EMIT globalShortcutTriggered();
         return 1;
     }
 
@@ -107,6 +106,11 @@ int AutoTypePlatformWin::platformEventFilter(void* event)
 AutoTypeExecutor* AutoTypePlatformWin::createExecutor()
 {
     return new AutoTypeExecutorWin(this);
+}
+
+int AutoTypePlatformWin::initialTimeout()
+{
+    return 500;
 }
 
 //
@@ -168,7 +172,6 @@ void AutoTypePlatformWin::sendKey(Qt::Key key, bool isKeyDown)
     ::SendInput(1, &in, sizeof(INPUT));
 }
 
-// clang-format off
 //
 // Translate qt key code to windows virtual key code
 // see: https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731%28v=vs.85%29.aspx
@@ -186,10 +189,6 @@ DWORD AutoTypePlatformWin::qtToNativeKeyCode(Qt::Key key)
     case Qt::Key_Enter:
     case Qt::Key_Return:
         return VK_RETURN;   // 0x0D
-    case Qt::Key_Shift:
-        return VK_SHIFT;    // 0x10
-    case Qt::Key_Control:
-        return VK_CONTROL;  // 0x11
     case Qt::Key_Pause:
         return VK_PAUSE;    // 0x13
     case Qt::Key_CapsLock:
@@ -422,7 +421,6 @@ BOOL AutoTypePlatformWin::isExtendedKey(DWORD nativeKeyCode)
         return FALSE;
     }
 }
-// clang-format on
 
 //
 // Translate qt key modifiers to windows modifiers
@@ -475,14 +473,17 @@ BOOL AutoTypePlatformWin::isAltTabWindow(HWND hwnd)
 //
 // Window title enum proc
 //
-BOOL CALLBACK AutoTypePlatformWin::windowTitleEnumProc(_In_ HWND hwnd, _In_ LPARAM lParam)
+BOOL CALLBACK AutoTypePlatformWin::windowTitleEnumProc(
+    _In_ HWND   hwnd,
+    _In_ LPARAM lParam
+)
 {
     if (!isAltTabWindow(hwnd)) {
         // Skip window
         return TRUE;
     }
 
-    QStringList* list = reinterpret_cast<QStringList*>(lParam);
+    QStringList *list = reinterpret_cast<QStringList *>(lParam);
     QString title = windowTitle(hwnd);
 
     if (!title.isEmpty()) {
@@ -500,7 +501,7 @@ QString AutoTypePlatformWin::windowTitle(HWND hwnd)
     wchar_t title[MAX_WINDOW_TITLE_LENGTH];
     int count = ::GetWindowTextW(hwnd, title, MAX_WINDOW_TITLE_LENGTH);
 
-    return QString::fromUtf16(reinterpret_cast<const ushort*>(title), count);
+    return QString::fromUtf16(reinterpret_cast<const ushort *>(title), count);
 }
 
 //
@@ -516,32 +517,13 @@ void AutoTypeExecutorWin::execChar(AutoTypeChar* action)
 {
     m_platform->sendChar(action->character, true);
     m_platform->sendChar(action->character, false);
+    ::Sleep(25);
 }
 
 void AutoTypeExecutorWin::execKey(AutoTypeKey* action)
 {
     m_platform->sendKey(action->key, true);
     m_platform->sendKey(action->key, false);
-}
-
-void AutoTypeExecutorWin::execClearField(AutoTypeClearField* action = nullptr)
-{
-    Q_UNUSED(action);
-
-    m_platform->sendKey(Qt::Key_Control, true);
-    m_platform->sendKey(Qt::Key_Home, true);
-    m_platform->sendKey(Qt::Key_Home, false);
-    m_platform->sendKey(Qt::Key_Control, false);
-    ::Sleep(25);
-    m_platform->sendKey(Qt::Key_Control, true);
-    m_platform->sendKey(Qt::Key_Shift, true);
-    m_platform->sendKey(Qt::Key_End, true);
-    m_platform->sendKey(Qt::Key_End, false);
-    m_platform->sendKey(Qt::Key_Shift, false);
-    m_platform->sendKey(Qt::Key_Control, false);
-    ::Sleep(25);
-    m_platform->sendKey(Qt::Key_Backspace, true);
-    m_platform->sendKey(Qt::Key_Backspace, false);
-
     ::Sleep(25);
 }
+

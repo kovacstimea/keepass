@@ -16,11 +16,14 @@
  */
 
 #include "TestKeePass1Reader.h"
-#include "TestGlobal.h"
 
 #include <QBuffer>
+#include <QTest>
 
 #include "config-keepassx-tests.h"
+#include "core/Database.h"
+#include "core/Entry.h"
+#include "core/Group.h"
 #include "core/Metadata.h"
 #include "crypto/Crypto.h"
 #include "format/KeePass1Reader.h"
@@ -106,13 +109,13 @@ void TestKeePass1Reader::testBasic()
 
 void TestKeePass1Reader::testMasterKey()
 {
-    QVERIFY(m_db->isInitialized());
-    QCOMPARE(m_db->kdf()->rounds(), 713);
+    QVERIFY(m_db->hasKey());
+    QCOMPARE(m_db->transformRounds(), static_cast<quint64>(713));
 }
 
 void TestKeePass1Reader::testCustomIcons()
 {
-    QCOMPARE(m_db->metadata()->customIconsOrder().size(), 1);
+    QCOMPARE(m_db->metadata()->customIcons().size(), 1);
 
     Entry* entry = m_db->rootGroup()->children().at(1)->entries().at(0);
 
@@ -133,7 +136,8 @@ void TestKeePass1Reader::testGroupExpanded()
 {
     QCOMPARE(m_db->rootGroup()->children().at(0)->isExpanded(), true);
     QCOMPARE(m_db->rootGroup()->children().at(0)->children().at(0)->isExpanded(), true);
-    QCOMPARE(m_db->rootGroup()->children().at(0)->children().at(0)->children().at(0)->isExpanded(), false);
+    QCOMPARE(m_db->rootGroup()->children().at(0)->children().at(0)->children().at(0)->isExpanded(),
+             false);
 }
 
 void TestKeePass1Reader::testAutoType()
@@ -177,13 +181,15 @@ void TestKeePass1Reader::testFileKey()
     QString dbFilename = QString("%1/%2.kdb").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
     QString keyFilename = QString("%1/%2.key").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
 
-    auto db = reader.readDatabase(dbFilename, QString(), keyFilename);
+    Database* db = reader.readDatabase(dbFilename, QString(), keyFilename);
     QVERIFY(db);
     QVERIFY(!reader.hasError());
     QCOMPARE(db->rootGroup()->children().size(), 1);
     QCOMPARE(db->rootGroup()->children().at(0)->name(), name);
 
     reopenDatabase(db, QString(), keyFilename);
+
+    delete db;
 }
 
 void TestKeePass1Reader::testFileKey_data()
@@ -203,13 +209,15 @@ void TestKeePass1Reader::testCompositeKey()
     QString dbFilename = QString("%1/%2.kdb").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
     QString keyFilename = QString("%1/FileKeyHex.key").arg(QString(KEEPASSX_TEST_DATA_DIR));
 
-    auto db = reader.readDatabase(dbFilename, "mypassword", keyFilename);
+    Database* db = reader.readDatabase(dbFilename, "mypassword", keyFilename);
     QVERIFY(db);
     QVERIFY(!reader.hasError());
     QCOMPARE(db->rootGroup()->children().size(), 1);
     QCOMPARE(db->rootGroup()->children().at(0)->name(), name);
 
     reopenDatabase(db, "mypassword", keyFilename);
+
+    delete db;
 }
 
 void TestKeePass1Reader::testTwofish()
@@ -220,11 +228,13 @@ void TestKeePass1Reader::testTwofish()
 
     QString dbFilename = QString("%1/%2.kdb").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
 
-    auto db = reader.readDatabase(dbFilename, "masterpw", 0);
+    Database* db = reader.readDatabase(dbFilename, "masterpw", 0);
     QVERIFY(db);
     QVERIFY(!reader.hasError());
     QCOMPARE(db->rootGroup()->children().size(), 1);
     QCOMPARE(db->rootGroup()->children().at(0)->name(), name);
+
+    delete db;
 }
 
 void TestKeePass1Reader::testCP1252Password()
@@ -236,15 +246,18 @@ void TestKeePass1Reader::testCP1252Password()
     QString dbFilename = QString("%1/%2.kdb").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
     QString password = QString::fromUtf8("\xe2\x80\x9e\x70\x61\x73\x73\x77\x6f\x72\x64\xe2\x80\x9d");
 
-    auto db = reader.readDatabase(dbFilename, password, 0);
+    Database* db = reader.readDatabase(dbFilename, password, 0);
     QVERIFY(db);
     QVERIFY(!reader.hasError());
     QCOMPARE(db->rootGroup()->children().size(), 1);
     QCOMPARE(db->rootGroup()->children().at(0)->name(), name);
+
+    delete db;
 }
 
 void TestKeePass1Reader::cleanupTestCase()
 {
+    delete m_db;
 }
 
 QDateTime TestKeePass1Reader::genDT(int year, int month, int day, int hour, int min)
@@ -254,30 +267,29 @@ QDateTime TestKeePass1Reader::genDT(int year, int month, int day, int hour, int 
     return QDateTime(date, time, Qt::UTC);
 }
 
-void TestKeePass1Reader::reopenDatabase(QSharedPointer<Database> db,
-                                        const QString& password,
-                                        const QString& keyfileName)
+void TestKeePass1Reader::reopenDatabase(Database* db, const QString& password, const QString& keyfileName)
 {
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
 
     KeePass2Writer writer;
-    writer.writeDatabase(&buffer, db.data());
+    writer.writeDatabase(&buffer, db);
     QVERIFY(!writer.hasError());
     QVERIFY(buffer.seek(0));
 
-    auto key = QSharedPointer<CompositeKey>::create();
-    if (!password.isEmpty()) {
-        key->addKey(QSharedPointer<PasswordKey>::create(password));
+    CompositeKey key;
+    if (!password.isNull()) {
+        key.addKey(PasswordKey(password));
     }
     if (!keyfileName.isEmpty()) {
-        auto fileKey = QSharedPointer<FileKey>::create();
-        QVERIFY(fileKey->load(keyfileName));
-        key->addKey(fileKey);
+        FileKey fileKey;
+        QVERIFY(fileKey.load(keyfileName));
+        key.addKey(fileKey);
     }
 
     KeePass2Reader reader;
-    auto newDb = QSharedPointer<Database>::create();
-    QVERIFY(reader.readDatabase(&buffer, key, newDb.data()));
+    Database* newDb = reader.readDatabase(&buffer, key);
+    QVERIFY(newDb);
     QVERIFY(!reader.hasError());
+    delete newDb;
 }

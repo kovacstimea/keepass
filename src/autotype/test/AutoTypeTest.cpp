@@ -68,11 +68,6 @@ AutoTypeExecutor* AutoTypePlatformTest::createExecutor()
     return new AutoTypeExecutorTest(this);
 }
 
-void AutoTypePlatformTest::triggerGlobalAutoType()
-{
-    emit globalShortcutTriggered();
-}
-
 void AutoTypePlatformTest::setActiveWindowTitle(const QString& title)
 {
     m_activeWindowTitle = title;
@@ -108,6 +103,11 @@ void AutoTypePlatformTest::addActionKey(AutoTypeKey* action)
     m_actionChars.append(keyToString(action->key));
 }
 
+int AutoTypePlatformTest::initialTimeout()
+{
+    return 0;
+}
+
 bool AutoTypePlatformTest::raiseWindow(WId window)
 {
     Q_UNUSED(window);
@@ -115,8 +115,8 @@ bool AutoTypePlatformTest::raiseWindow(WId window)
     return false;
 }
 
-#if defined(Q_OS_MACOS)
-bool AutoTypePlatformTest::hideOwnWindow()
+#if defined(Q_OS_MAC)
+bool AutoTypePlatformTest::raiseLastActiveWindow()
 {
     return false;
 }

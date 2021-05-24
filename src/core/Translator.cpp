@@ -1,5 +1,4 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *  Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -22,115 +21,110 @@
 #include <QDir>
 #include <QLibraryInfo>
 #include <QLocale>
-#include <QRegularExpression>
+#include <QRegExp>
 #include <QTranslator>
 
 #include "config-keepassx.h"
 #include "core/Config.h"
-#include "core/Resources.h"
+#include "core/FilePath.h"
 
-/**
- * Install all KeePassXC and Qt translators.
- */
-void Translator::installTranslators()
+void Translator::installTranslator()
 {
-    QStringList languages;
-    QString languageSetting = config()->get(Config::GUI_Language).toString();
-    if (languageSetting.isEmpty() || languageSetting == "system") {
-        // NOTE: this is a workaround for the terrible way Qt loads languages
-        // using the QLocale::uiLanguages() approach. Instead, we search each
-        // language and all country variants in order before moving to the next.
-        QLocale locale;
-        languages = locale.uiLanguages();
-    } else {
-        languages << languageSetting;
+    QString language = config()->get("GUI/Language").toString();
+    if (language == "system" || language.isEmpty()) {
+        language = QLocale::system().name();
     }
 
-    // Always try to load english last
-    languages << "en_US";
-
-    const auto path = resources()->dataPath("translations");
-    installQtTranslator(languages, path);
-    if (!installTranslator(languages, path)) {
-        // couldn't load configured language or fallback
-        qWarning("Couldn't load translations.");
-    }
-}
-
-/**
- * Install KeePassXC translator.
- *
- * @param languages priority-ordered list of languages
- * @param path absolute search path
- * @return true on success
- */
-bool Translator::installTranslator(const QStringList& languages, const QString& path)
-{
-    for (const auto& language : languages) {
-        QLocale locale(language);
-        QScopedPointer<QTranslator> translator(new QTranslator(qApp));
-        if (translator->load(locale, "keepassx_", "", path)) {
-            return QCoreApplication::installTranslator(translator.take());
+    if (!installTranslator(language)) {
+        // English fallback still needs translations for plurals
+        if (!installTranslator("en_plurals")) {
+            qWarning("Couldn't load translations.");
         }
     }
 
-    return false;
+    installQtTranslator(language);
+
+    availableLanguages();
 }
 
-/**
- * Install Qt5 base translator from the specified local search path or the default system path
- * if no qtbase_* translations were found at the local path.
- *
- * @param languages priority-ordered list of languages
- * @param path absolute search path
- * @return true on success
- */
-bool Translator::installQtTranslator(const QStringList& languages, const QString& path)
+QList<QPair<QString, QString> > Translator::availableLanguages()
 {
-    for (const auto& language : languages) {
-        QLocale locale(language);
-        QScopedPointer<QTranslator> qtTranslator(new QTranslator(qApp));
-        if (qtTranslator->load(locale, "qtbase_", "", path)) {
-            return QCoreApplication::installTranslator(qtTranslator.take());
-        } else if (qtTranslator->load(locale, "qtbase_", "", QLibraryInfo::location(QLibraryInfo::TranslationsPath))) {
-            return QCoreApplication::installTranslator(qtTranslator.take());
-        }
-    }
-    return false;
-}
+    const QStringList paths = {
+#ifdef QT_DEBUG
+        QString("%1/share/translations").arg(KEEPASSX_BINARY_DIR),
+#endif
+        filePath()->dataPath("translations")
+    };
 
-/**
- * @return list of pairs of available language codes and names
- */
-QList<QPair<QString, QString>> Translator::availableLanguages()
-{
-    QList<QPair<QString, QString>> languages;
+    QList<QPair<QString, QString> > languages;
     languages.append(QPair<QString, QString>("system", "System default"));
 
-    QRegularExpression regExp("^keepassx_([a-zA-Z_]+)\\.qm$", QRegularExpression::CaseInsensitiveOption);
-    const QStringList fileList = QDir(resources()->dataPath("translations")).entryList();
-    for (const QString& filename : fileList) {
-        QRegularExpressionMatch match = regExp.match(filename);
-        if (match.hasMatch()) {
-            QString langcode = match.captured(1);
-            if (langcode == "en") {
-                continue;
-            }
+    QRegExp regExp("keepassx_([a-zA-Z_]+)\\.qm", Qt::CaseInsensitive, QRegExp::RegExp2);
+    for (const QString& path : paths) {
+        const QStringList fileList = QDir(path).entryList();
+        for (const QString& filename : fileList) {
+            if (regExp.exactMatch(filename)) {
+                QString langcode = regExp.cap(1);
+                if (langcode == "en_plurals") {
+                    langcode = "en";
+                }
 
-            QLocale locale(langcode);
-            QString languageStr = QLocale::languageToString(locale.language());
-            if (langcode == "la") {
-                // langcode "la" (Latin) is translated into "C" by QLocale::languageToString()
-                languageStr = "Latin";
-            }
-            if (langcode.contains("_")) {
-                languageStr += QString(" (%1)").arg(QLocale::countryToString(locale.country()));
-            }
+                QLocale locale(langcode);
+                QString languageStr = QLocale::languageToString(locale.language());
+                QString countryStr;
+                if (langcode.contains("_")) {
+                    countryStr = QString(" (%1)").arg(QLocale::countryToString(locale.country()));
+                }
 
-            QPair<QString, QString> language(langcode, languageStr);
-            languages.append(language);
+                QPair<QString, QString> language(langcode, languageStr + countryStr);
+                languages.append(language);
+            }
         }
     }
 
     return languages;
+}
+
+bool Translator::installTranslator(const QString& language)
+{
+    const QStringList paths = {
+#ifdef QT_DEBUG
+        QString("%1/share/translations").arg(KEEPASSX_BINARY_DIR),
+#endif
+        filePath()->dataPath("translations")
+    };
+
+    for (const QString& path : paths) {
+        if (installTranslator(language, path)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Translator::installTranslator(const QString& language, const QString& path)
+{
+    QTranslator* translator = new QTranslator(qApp);
+    if (translator->load(QString("keepassx_").append(language), path)) {
+        QCoreApplication::installTranslator(translator);
+        return true;
+    }
+    else {
+        delete translator;
+        return false;
+    }
+}
+
+bool Translator::installQtTranslator(const QString& language)
+{
+    QTranslator* qtTranslator = new QTranslator(qApp);
+    if (qtTranslator->load(QString("%1/qtbase_%2").arg(QLibraryInfo::location(QLibraryInfo::TranslationsPath), language))) {
+        QCoreApplication::installTranslator(qtTranslator);
+        return true;
+    }
+    else {
+        delete qtTranslator;
+        return false;
+    }
 }

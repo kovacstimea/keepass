@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
+ *  Copyright (C) 2010 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,40 +18,56 @@
 #ifndef KEEPASSX_KEEPASS2READER_H
 #define KEEPASSX_KEEPASS2READER_H
 
-#include "KdbxReader.h"
-#include "core/Database.h"
-#include "format/KeePass2.h"
+#include <QCoreApplication>
+
 #include "keys/CompositeKey.h"
 
-#include <QByteArray>
-#include <QCoreApplication>
-#include <QIODevice>
-#include <QScopedPointer>
-#include <QString>
-#include <QtGlobal>
+class Database;
+class QIODevice;
 
 class KeePass2Reader
 {
-    Q_DECLARE_TR_FUNCTIONS(KdbxReader)
+    Q_DECLARE_TR_FUNCTIONS(KeePass2Reader)
 
 public:
-    bool readDatabase(const QString& filename, QSharedPointer<const CompositeKey> key, Database* db);
-    bool readDatabase(QIODevice* device, QSharedPointer<const CompositeKey> key, Database* db);
-
-    bool hasError() const;
-    QString errorString() const;
-
-    QSharedPointer<KdbxReader> reader() const;
-    quint32 version() const;
+    KeePass2Reader();
+    Database* readDatabase(QIODevice* device, const CompositeKey& key, bool keepDatabase = false);
+    Database* readDatabase(const QString& filename, const CompositeKey& key);
+    bool hasError();
+    QString errorString();
+    void setSaveXml(bool save);
+    QByteArray xmlData();
+    QByteArray streamKey();
 
 private:
     void raiseError(const QString& errorMessage);
 
-    bool m_error = false;
-    QString m_errorStr = "";
+    bool readHeaderField();
 
-    QSharedPointer<KdbxReader> m_reader;
-    quint32 m_version = 0;
+    void setCipher(const QByteArray& data);
+    void setCompressionFlags(const QByteArray& data);
+    void setMasterSeed(const QByteArray& data);
+    void setTransformSeed(const QByteArray& data);
+    void setTransformRounds(const QByteArray& data);
+    void setEncryptionIV(const QByteArray& data);
+    void setProtectedStreamKey(const QByteArray& data);
+    void setStreamStartBytes(const QByteArray& data);
+    void setInnerRandomStreamID(const QByteArray& data);
+
+    QIODevice* m_device;
+    QIODevice* m_headerStream;
+    bool m_error;
+    QString m_errorStr;
+    bool m_headerEnd;
+    bool m_saveXml;
+    QByteArray m_xmlData;
+
+    Database* m_db;
+    QByteArray m_masterSeed;
+    QByteArray m_transformSeed;
+    QByteArray m_encryptionIV;
+    QByteArray m_streamStartBytes;
+    QByteArray m_protectedStreamKey;
 };
 
 #endif // KEEPASSX_KEEPASS2READER_H

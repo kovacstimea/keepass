@@ -18,17 +18,12 @@
 #ifndef KEEPASSX_EDITWIDGETPROPERTIES_H
 #define KEEPASSX_EDITWIDGETPROPERTIES_H
 
-#include <QItemSelection>
-#include <QPointer>
-#include <QStandardItemModel>
 #include <QWidget>
 
-class CustomData;
-class TimeInfo;
-class QUuid;
+#include "core/TimeInfo.h"
+#include "core/Uuid.h"
 
-namespace Ui
-{
+namespace Ui {
     class EditWidgetProperties;
 }
 
@@ -40,19 +35,10 @@ public:
     explicit EditWidgetProperties(QWidget* parent = nullptr);
     ~EditWidgetProperties();
 
-    void setFields(const TimeInfo& timeInfo, const QUuid& uuid);
-    void setCustomData(CustomData* customData);
-
-private slots:
-    void update();
-    void removeSelectedPluginData();
-    void toggleRemoveButton(const QItemSelection& selected);
+    void setFields(TimeInfo timeInfo, Uuid uuid);
 
 private:
     const QScopedPointer<Ui::EditWidgetProperties> m_ui;
-
-    QPointer<CustomData> m_customData;
-    QPointer<QStandardItemModel> m_customDataModel;
 
     Q_DISABLE_COPY(EditWidgetProperties)
 };

@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2016 Lennart Glauer <mail@lennart-glauer.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,8 +16,6 @@
  */
 
 #include "AutoTypeMac.h"
-#include "gui/osutils/macutils/MacUtils.h"
-#include "gui/MessageBox.h"
 
 #include <ApplicationServices/ApplicationServices.h>
 
@@ -26,30 +23,23 @@
 #define MAX_WINDOW_TITLE_LENGTH 1024
 #define INVALID_KEYCODE 0xFFFF
 
-namespace {
-bool accessibilityChecked = false;
-}
-
 AutoTypePlatformMac::AutoTypePlatformMac()
-    : m_hotkeyRef(nullptr)
+    : m_appkit(new AppKit())
+    , m_hotkeyRef(nullptr)
     , m_hotkeyId({ 'kpx2', HOTKEY_ID })
 {
     EventTypeSpec eventSpec;
     eventSpec.eventClass = kEventClassKeyboard;
     eventSpec.eventKind = kEventHotKeyPressed;
 
-    MessageBox::initializeButtonDefs();
     ::InstallApplicationEventHandler(AutoTypePlatformMac::hotkeyHandler, 1, &eventSpec, this, nullptr);
 }
 
-/**
- * Determine if Auto-Type is available
- *
- * @return always return true
- */
+//
+// Keepassx requires mac os 10.7
+//
 bool AutoTypePlatformMac::isAvailable()
 {
-    // Accessibility permissions are requested upon first use, instead of on load
     return true;
 }
 
@@ -88,7 +78,7 @@ QStringList AutoTypePlatformMac::windowTitles()
 //
 WId AutoTypePlatformMac::activeWindow()
 {
-    return macUtils()->activeWindow();
+    return m_appkit->activeProcessId();
 }
 
 //
@@ -108,9 +98,7 @@ QString AutoTypePlatformMac::activeWindowTitle()
             if (windowLayer(window) == 0) {
                 // First toplevel window in list (front to back order)
                 title = windowTitle(window);
-                if (!title.isEmpty()) {
-                    break;
-                }
+                break;
             }
         }
 
@@ -130,7 +118,7 @@ bool AutoTypePlatformMac::registerGlobalShortcut(Qt::Key key, Qt::KeyboardModifi
         qWarning("Invalid key code");
         return false;
     }
-    CGEventFlags nativeModifiers = qtToNativeModifiers(modifiers, false);
+    uint16 nativeModifiers = qtToNativeModifiers(modifiers);
     if (::RegisterEventHotKey(nativeKeyCode, nativeModifiers, m_hotkeyId, GetApplicationEventTarget(), 0, &m_hotkeyRef) != noErr) {
         qWarning("Register hotkey failed");
         return false;
@@ -163,20 +151,25 @@ AutoTypeExecutor* AutoTypePlatformMac::createExecutor()
     return new AutoTypeExecutorMac(this);
 }
 
+int AutoTypePlatformMac::initialTimeout()
+{
+    return 500;
+}
+
 //
 // Activate window by process id
 //
 bool AutoTypePlatformMac::raiseWindow(WId pid)
 {
-    return macUtils()->raiseWindow(pid);
+    return m_appkit->activateProcess(pid);
 }
 
 //
 // Activate last active window
 //
-bool AutoTypePlatformMac::hideOwnWindow()
+bool AutoTypePlatformMac::raiseLastActiveWindow()
 {
-    return macUtils()->hideOwnWindow();
+    return m_appkit->activateProcess(m_appkit->lastActiveProcessId());
 }
 
 //
@@ -184,7 +177,7 @@ bool AutoTypePlatformMac::hideOwnWindow()
 //
 bool AutoTypePlatformMac::raiseOwnWindow()
 {
-    return macUtils()->raiseOwnWindow();
+    return m_appkit->activateProcess(m_appkit->ownProcessId());
 }
 
 //
@@ -206,7 +199,7 @@ void AutoTypePlatformMac::sendChar(const QChar& ch, bool isKeyDown)
 // Send key code to active window
 // see: Quartz Event Services
 //
-void AutoTypePlatformMac::sendKey(Qt::Key key, bool isKeyDown, Qt::KeyboardModifiers modifiers = 0)
+void AutoTypePlatformMac::sendKey(Qt::Key key, bool isKeyDown)
 {
     uint16 keyCode = qtToNativeKeyCode(key);
     if (keyCode == INVALID_KEYCODE) {
@@ -214,9 +207,7 @@ void AutoTypePlatformMac::sendKey(Qt::Key key, bool isKeyDown, Qt::KeyboardModif
     }
 
     CGEventRef keyEvent = ::CGEventCreateKeyboardEvent(nullptr, keyCode, isKeyDown);
-    CGEventFlags nativeModifiers = qtToNativeModifiers(modifiers, true);
     if (keyEvent != nullptr) {
-        ::CGEventSetFlags(keyEvent, nativeModifiers);
         ::CGEventPost(kCGSessionEventTap, keyEvent);
         ::CFRelease(keyEvent);
     }
@@ -324,10 +315,6 @@ uint16 AutoTypePlatformMac::qtToNativeKeyCode(Qt::Key key)
         case Qt::Key_Period:
             return kVK_ANSI_Period;
 
-        case Qt::Key_Shift:
-            return kVK_Shift;
-        case Qt::Key_Control:
-            return kVK_Command;
         case Qt::Key_Backspace:
             return kVK_Delete;
         case Qt::Key_Tab:
@@ -406,34 +393,21 @@ uint16 AutoTypePlatformMac::qtToNativeKeyCode(Qt::Key key)
 // Translate qt key modifiers to mac os modifiers
 // see: https://doc.qt.io/qt-5/osx-issues.html#special-keys
 //
-CGEventFlags AutoTypePlatformMac::qtToNativeModifiers(Qt::KeyboardModifiers modifiers, bool native)
+uint16 AutoTypePlatformMac::qtToNativeModifiers(Qt::KeyboardModifiers modifiers)
 {
-    CGEventFlags nativeModifiers = CGEventFlags(0);
-
-    CGEventFlags shiftMod = CGEventFlags(shiftKey);
-    CGEventFlags cmdMod = CGEventFlags(cmdKey);
-    CGEventFlags optionMod = CGEventFlags(optionKey);
-    CGEventFlags controlMod = CGEventFlags(controlKey);
-
-    if (native) {
-        shiftMod = kCGEventFlagMaskShift;
-        cmdMod = kCGEventFlagMaskCommand;
-        optionMod = kCGEventFlagMaskAlternate;
-        controlMod = kCGEventFlagMaskControl;
-    }
-
+    uint16 nativeModifiers = 0;
 
     if (modifiers & Qt::ShiftModifier) {
-        nativeModifiers = CGEventFlags(nativeModifiers | shiftMod);
+        nativeModifiers |= shiftKey;
     }
     if (modifiers & Qt::ControlModifier) {
-        nativeModifiers = CGEventFlags(nativeModifiers | cmdMod);
+        nativeModifiers |= cmdKey;
     }
     if (modifiers & Qt::AltModifier) {
-        nativeModifiers = CGEventFlags(nativeModifiers | optionMod);
+        nativeModifiers |= optionKey;
     }
     if (modifiers & Qt::MetaModifier) {
-        nativeModifiers = CGEventFlags(nativeModifiers | controlMod);
+        nativeModifiers |= controlKey;
     }
 
     return nativeModifiers;
@@ -475,31 +449,16 @@ QString AutoTypePlatformMac::windowTitle(CFDictionaryRef window)
 //
 // Carbon hotkey handler
 //
-OSStatus AutoTypePlatformMac::hotkeyHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void* userData)
+OSStatus AutoTypePlatformMac::hotkeyHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData)
 {
     Q_UNUSED(nextHandler);
 
-    // Determine if the user has given proper permissions to KeePassXC to perform Auto-Type
-    if (!accessibilityChecked) {
-        if (macUtils()->enableAccessibility() && macUtils()->enableScreenRecording()) {
-            accessibilityChecked = true;
-        } else {
-            // Does not have required permissions to Auto-Type, ignore the keypress
-            MessageBox::information(nullptr,
-                    tr("Permission Required"),
-                    tr("KeePassXC requires the Accessibility and Screen Recorder permission in order to perform global "
-                       "Auto-Type. Screen Recording is necessary to use the window title to find entries. If you "
-                       "already granted permission, you may have to restart KeePassXC."));
-            return noErr;
-        }
-    }
-
-    AutoTypePlatformMac* self = static_cast<AutoTypePlatformMac*>(userData);
+    AutoTypePlatformMac *self = static_cast<AutoTypePlatformMac *>(userData);
     EventHotKeyID hotkeyId;
 
     if (::GetEventParameter(theEvent, kEventParamDirectObject, typeEventHotKeyID, nullptr, sizeof(hotkeyId), nullptr, &hotkeyId) == noErr
             && hotkeyId.id == HOTKEY_ID) {
-        emit self->globalShortcutTriggered();
+        Q_EMIT self->globalShortcutTriggered();
     }
 
     return noErr;
@@ -518,32 +477,12 @@ void AutoTypeExecutorMac::execChar(AutoTypeChar* action)
 {
     m_platform->sendChar(action->character, true);
     m_platform->sendChar(action->character, false);
+    usleep(25 * 1000);
 }
 
 void AutoTypeExecutorMac::execKey(AutoTypeKey* action)
 {
     m_platform->sendKey(action->key, true);
     m_platform->sendKey(action->key, false);
-}
-
-void AutoTypeExecutorMac::execClearField(AutoTypeClearField* action = nullptr)
-{
-    Q_UNUSED(action);
-
-    m_platform->sendKey(Qt::Key_Control, true, Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Up, true, Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Up, false, Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Control, false);
-    usleep(25 * 1000);
-    m_platform->sendKey(Qt::Key_Shift, true, Qt::ShiftModifier);
-    m_platform->sendKey(Qt::Key_Control, true, Qt::ShiftModifier | Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Down, true, Qt::ShiftModifier | Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Down, false, Qt::ShiftModifier | Qt::ControlModifier);
-    m_platform->sendKey(Qt::Key_Control, false, Qt::ShiftModifier);
-    m_platform->sendKey(Qt::Key_Shift, false);
-    usleep(25 * 1000);
-    m_platform->sendKey(Qt::Key_Backspace, true);
-    m_platform->sendKey(Qt::Key_Backspace, false);
-
     usleep(25 * 1000);
 }

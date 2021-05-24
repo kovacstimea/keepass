@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2011 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +19,6 @@
 #define KEEPASSX_DATABASEOPENWIDGET_H
 
 #include <QScopedPointer>
-#include <QTimer>
 
 #include "gui/DialogyWidget.h"
 #include "keys/CompositeKey.h"
@@ -28,8 +26,7 @@
 class Database;
 class QFile;
 
-namespace Ui
-{
+namespace Ui {
     class DatabaseOpenWidget;
 }
 
@@ -41,41 +38,31 @@ public:
     explicit DatabaseOpenWidget(QWidget* parent = nullptr);
     ~DatabaseOpenWidget();
     void load(const QString& filename);
-    QString filename();
-    void clearForms();
     void enterKey(const QString& pw, const QString& keyFile);
-    QSharedPointer<Database> database();
+    Database* database();
 
-signals:
-    void dialogFinished(bool accepted);
+Q_SIGNALS:
+    void editFinished(bool accepted);
 
 protected:
     void showEvent(QShowEvent* event) override;
-    void hideEvent(QHideEvent* event) override;
-    QSharedPointer<CompositeKey> buildDatabaseKey();
+    CompositeKey databaseKey();
 
-    const QScopedPointer<Ui::DatabaseOpenWidget> m_ui;
-    QSharedPointer<Database> m_db;
-    QString m_filename;
-    bool m_retryUnlockWithEmptyPassword = false;
-
-protected slots:
+protected Q_SLOTS:
     virtual void openDatabase();
     void reject();
 
-private slots:
+private Q_SLOTS:
+    void activatePassword();
+    void activateKeyFile();
     void browseKeyFile();
-    void clearKeyFileText();
-    void keyFileTextChanged();
-    void pollHardwareKey();
-    void hardwareKeyResponse(bool found);
-    void openHardwareKeyHelp();
-    void openKeyFileHelp();
+
+protected:
+    const QScopedPointer<Ui::DatabaseOpenWidget> m_ui;
+    Database* m_db;
+    QString m_filename;
 
 private:
-    bool m_pollingHardwareKey = false;
-    QTimer m_hideTimer;
-
     Q_DISABLE_COPY(DatabaseOpenWidget)
 };
 

@@ -23,7 +23,7 @@
 class WildcardMatcher
 {
 public:
-    explicit WildcardMatcher(QString text);
+    explicit WildcardMatcher(const QString& text);
     bool match(const QString& pattern);
 
     static const QChar Wildcard;

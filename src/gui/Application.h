@@ -1,7 +1,6 @@
 /*
  *  Copyright (C) 2012 Tobias Tangemann
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,17 +20,6 @@
 #define KEEPASSX_APPLICATION_H
 
 #include <QApplication>
-#include <QtNetwork/QLocalServer>
-
-#if defined(Q_OS_WIN) || (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
-#include <QScopedPointer>
-
-class OSEventFilter;
-#endif
-class QLockFile;
-class QSocketNotifier;
-
-constexpr int RESTART_EXITCODE = -1;
 
 class Application : public QApplication
 {
@@ -39,51 +27,15 @@ class Application : public QApplication
 
 public:
     Application(int& argc, char** argv);
-    ~Application() override;
-
-    void applyTheme();
+    void setMainWindow(QWidget* mainWindow);
 
     bool event(QEvent* event) override;
-    bool isAlreadyRunning() const;
-    bool isDarkTheme() const;
 
-    bool sendFileNamesToRunningInstance(const QStringList& fileNames);
-
-    void restart();
-
-signals:
+Q_SIGNALS:
     void openFile(const QString& filename);
-    void anotherInstanceStarted();
-    void applicationActivated();
-    void quitSignalReceived();
-
-private slots:
-#if defined(Q_OS_UNIX)
-    void quitBySignal();
-#endif
-    void processIncomingConnection();
-    void socketReadyRead();
 
 private:
-#if defined(Q_OS_UNIX)
-    /**
-     * Register Unix signals such as SIGINT and SIGTERM for clean shutdown.
-     */
-    void registerUnixSignals();
-    QSocketNotifier* m_unixSignalNotifier;
-    static void handleUnixSignal(int sig);
-    static int unixSignalSocket[2];
-#endif
-    bool m_alreadyRunning;
-    bool m_darkTheme = false;
-    QLockFile* m_lockFile;
-    QLocalServer m_lockServer;
-    QString m_socketName;
-#if defined(Q_OS_WIN) || (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
-    QScopedPointer<OSEventFilter> m_osEventFilter;
-#endif
+    QWidget* m_mainWindow;
 };
-
-#define kpxcApp qobject_cast<Application*>(Application::instance())
 
 #endif // KEEPASSX_APPLICATION_H

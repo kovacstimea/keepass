@@ -1,20 +1,19 @@
 /*
- * Copyright (C) 2018 KeePassXC Team <team@keepassxc.org>
- * Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
- * Copyright (C) 2014 Florian Geyer <blueice@fobos.de>
+ *  Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
+ *  Copyright (C) 2014 Florian Geyer <blueice@fobos.de>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 or (at your option)
- * version 3 of the License.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 or (at your option)
+ *  version 3 of the License.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef KEEPASSX_DATABASEWIDGETSTATESYNC_H
@@ -28,34 +27,28 @@ class DatabaseWidgetStateSync : public QObject
 
 public:
     explicit DatabaseWidgetStateSync(QObject* parent = nullptr);
-    ~DatabaseWidgetStateSync() override;
+    ~DatabaseWidgetStateSync();
 
-public slots:
+public Q_SLOTS:
     void setActive(DatabaseWidget* dbWidget);
     void restoreListView();
     void restoreSearchView();
 
-private slots:
+private Q_SLOTS:
     void blockUpdates();
     void updateSplitterSizes();
-    void updateViewState();
-    void sync();
+    void updateColumnSizes();
 
 private:
     static QList<int> variantToIntList(const QVariant& variant);
     static QVariant intListToVariant(const QList<int>& list);
 
-    QPointer<DatabaseWidget> m_activeDbWidget;
+    DatabaseWidget* m_activeDbWidget;
 
     bool m_blockUpdates;
-    QList<int> m_mainSplitterSizes;
-    QList<int> m_previewSplitterSizes;
-
-    bool m_hideUsernames;
-    bool m_hidePasswords;
-
-    QByteArray m_listViewState;
-    QByteArray m_searchViewState;
+    QList<int> m_splitterSizes;
+    QList<int> m_columnSizesList;
+    QList<int> m_columnSizesSearch;
 };
 
 #endif // KEEPASSX_DATABASEWIDGETSTATESYNC_H

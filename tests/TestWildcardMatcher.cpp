@@ -16,7 +16,9 @@
  */
 
 #include "TestWildcardMatcher.h"
-#include "TestGlobal.h"
+
+#include <QTest>
+
 #include "autotype/WildcardMatcher.h"
 
 QTEST_GUILESS_MAIN(TestWildcardMatcher)
@@ -70,7 +72,8 @@ void TestWildcardMatcher::verifyMatchResult(QString pattern, bool expected)
 {
     if (expected) {
         verifyMatch(pattern);
-    } else {
+    }
+    else {
         verifyNoMatch(pattern);
     }
 }

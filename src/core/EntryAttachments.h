@@ -21,8 +21,6 @@
 #include <QMap>
 #include <QObject>
 
-class QStringList;
-
 class EntryAttachments : public QObject
 {
     Q_OBJECT
@@ -31,20 +29,17 @@ public:
     explicit EntryAttachments(QObject* parent = nullptr);
     QList<QString> keys() const;
     bool hasKey(const QString& key) const;
-    QSet<QByteArray> values() const;
+    QList<QByteArray> values() const;
     QByteArray value(const QString& key) const;
     void set(const QString& key, const QByteArray& value);
     void remove(const QString& key);
-    void remove(const QStringList& keys);
-    bool isEmpty() const;
     void clear();
     void copyDataFrom(const EntryAttachments* other);
     bool operator==(const EntryAttachments& other) const;
     bool operator!=(const EntryAttachments& other) const;
-    int attachmentsSize() const;
 
-signals:
-    void entryAttachmentsModified();
+Q_SIGNALS:
+    void modified();
     void keyModified(const QString& key);
     void aboutToBeAdded(const QString& key);
     void added(const QString& key);

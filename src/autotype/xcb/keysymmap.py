@@ -39,21 +39,23 @@ else:
 
 keysymMap = {}
 
-with open(keysymdef, "r") as fid:
-    for line in fid:
-        match = re.search(r'0x([0-9a-fA-F]+)\s+/\* U\+([0-9a-fA-F]+)', line)
-        if match:
-            keysym = int(match.group(1), 16)
-            unicodeVal = int(match.group(2), 16)
+f = open(keysymdef, "r")
+for line in f:
+    match = re.search(r'0x([0-9a-fA-F]+)\s+/\* U\+([0-9a-fA-F]+)', line)
+    if match:
+        keysym = int(match.group(1), 16)
+        unicodeVal = int(match.group(2), 16)
 
-            # ignore 1:1 mappings
-            if 0x0020 <= keysym <= 0x007e or 0x00a0 <= keysym <= 0x00ff:
-                continue
-            # ignore unicode | 0x01000000 mappings
-            elif keysym >= 0x1000000:
-                continue
+        # ignore 1:1 mappings
+        if keysym >= 0x0020 and keysym <= 0x007e:
+            continue
+        if keysym >= 0x00a0 and keysym <= 0x00ff:
+            continue
+        # ignore unicode | 0x01000000 mappings
+        if keysym >= 0x1000000:
+            continue
 
-            keysymMap[unicodeVal] = keysym
+        keysymMap[unicodeVal] = keysym
 
 keysymMap = collections.OrderedDict(sorted(keysymMap.items(), key=lambda t: t[0]))
 
@@ -62,24 +64,26 @@ print("""/*
  */
 """)
 
-print("const int AutoTypePlatformX11::m_unicodeToKeysymLen = {0};".format(len(keysymMap)))
+print("const int AutoTypePlatformX11::m_unicodeToKeysymLen = " + str(len(keysymMap)) + ";")
 
 print()
 
 print("const uint AutoTypePlatformX11::m_unicodeToKeysymKeys[] = {")
 keys = keysymMap.keys()
 keyLen = len(keys)
-for idx, val in enumerate(keys, start=1):
+i = 1
+for val in keys:
     hexVal = "{0:#0{1}x}".format(val, 6)
 
-    if idx == keyLen:
+    if i == keyLen:
         print(hexVal)
-    elif (idx % cols) == 0:
+    elif (i % cols) == 0:
         print(hexVal + ",")
-    elif ((idx - 1) % cols) == 0:
+    elif ((i - 1) % cols) == 0:
         print("    " + hexVal + ", ", end="")
     else:
         print(hexVal + ", ", end="")
+    i += 1
 print("};")
 
 print()
@@ -87,15 +91,17 @@ print()
 print("const uint AutoTypePlatformX11::m_unicodeToKeysymValues[] = {")
 values = keysymMap.values()
 valuesLen = len(values)
-for idx, val in enumerate(values, start=1):
+i = 1
+for val in values:
     hexVal = "{0:#0{1}x}".format(val, 6)
 
-    if idx == valuesLen:
+    if i == valuesLen:
         print(hexVal)
-    elif (idx % cols) == 0:
+    elif (i % cols) == 0:
         print(hexVal + ",")
-    elif ((idx - 1) % cols) == 0:
+    elif ((i - 1) % cols) == 0:
         print("    " + hexVal + ", ", end="")
     else:
         print(hexVal + ", ", end="")
+    i += 1
 print("};")

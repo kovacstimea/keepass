@@ -1,5 +1,4 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *  Copyright (C) 2011 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -17,24 +16,21 @@
  */
 
 #include "TestKeys.h"
-#include "TestGlobal.h"
 
 #include <QBuffer>
+#include <QTest>
 
 #include "config-keepassx-tests.h"
-
+#include "core/Database.h"
 #include "core/Metadata.h"
 #include "crypto/Crypto.h"
-#include "crypto/CryptoHash.h"
-#include "crypto/kdf/AesKdf.h"
 #include "format/KeePass2Reader.h"
 #include "format/KeePass2Writer.h"
+#include "keys/CompositeKey.h"
 #include "keys/FileKey.h"
 #include "keys/PasswordKey.h"
-#include "mock/MockChallengeResponseKey.h"
 
 QTEST_GUILESS_MAIN(TestKeys)
-Q_DECLARE_METATYPE(FileKey::Type);
 
 void TestKeys::initTestCase()
 {
@@ -43,84 +39,102 @@ void TestKeys::initTestCase()
 
 void TestKeys::testComposite()
 {
-    auto compositeKey1 = QSharedPointer<CompositeKey>::create();
-    auto passwordKey1 = QSharedPointer<PasswordKey>::create();
-    auto passwordKey2 = QSharedPointer<PasswordKey>::create("test");
+    CompositeKey* compositeKey1 = new CompositeKey();
+    PasswordKey* passwordKey1 = new PasswordKey();
+    PasswordKey* passwordKey2 = new PasswordKey("test");
+    bool ok;
+    QString errorString;
 
     // make sure that addKey() creates a copy of the keys
-    compositeKey1->addKey(passwordKey1);
-    compositeKey1->addKey(passwordKey2);
+    compositeKey1->addKey(*passwordKey1);
+    compositeKey1->addKey(*passwordKey2);
+    delete passwordKey1;
+    delete passwordKey2;
 
-    AesKdf kdf;
-    kdf.setRounds(1);
-    QByteArray transformed1;
-    QVERIFY(compositeKey1->transform(kdf, transformed1));
-    QCOMPARE(transformed1.size(), 32);
+    QByteArray transformed = compositeKey1->transform(QByteArray(32, '\0'), 1, &ok, &errorString);
+    QVERIFY(ok);
+    QCOMPARE(transformed.size(), 32);
 
-    QScopedPointer<CompositeKey> compositeKey3(new CompositeKey());
-    QScopedPointer<CompositeKey> compositeKey4(new CompositeKey());
+    // make sure the subkeys are copied
+    CompositeKey* compositeKey2 = compositeKey1->clone();
+    delete compositeKey1;
+    QCOMPARE(compositeKey2->transform(QByteArray(32, '\0'), 1, &ok, &errorString), transformed);
+    QVERIFY(ok);
+    delete compositeKey2;
+
+    CompositeKey* compositeKey3 = new CompositeKey();
+    CompositeKey* compositeKey4 = new CompositeKey();
 
     // test clear()
-    compositeKey3->addKey(QSharedPointer<PasswordKey>::create("test"));
+    compositeKey3->addKey(PasswordKey("test"));
     compositeKey3->clear();
     QCOMPARE(compositeKey3->rawKey(), compositeKey4->rawKey());
+
+    // test assignment operator
+    compositeKey3->addKey(PasswordKey("123"));
+    *compositeKey4 = *compositeKey3;
+    QCOMPARE(compositeKey3->rawKey(), compositeKey4->rawKey());
+
+    // test self-assignment
+    *compositeKey3 = *compositeKey3;
+    QCOMPARE(compositeKey3->rawKey(), compositeKey4->rawKey());
+
+    delete compositeKey3;
+    delete compositeKey4;
+}
+
+void TestKeys::testCompositeKeyReadFromLine()
+{
+
+    QString keyFilename = QString("%1/FileKeyXml.key").arg(QString(KEEPASSX_TEST_DATA_DIR));
+
+    CompositeKey compositeFileKey = CompositeKey::readFromLine(keyFilename);
+    FileKey fileKey;
+    fileKey.load(keyFilename);
+    QCOMPARE(compositeFileKey.rawKey().size(), fileKey.rawKey().size());
+
+    CompositeKey compositePasswordKey = CompositeKey::readFromLine(QString("password"));
+    PasswordKey passwordKey(QString("password"));
+    QCOMPARE(compositePasswordKey.rawKey().size(), passwordKey.rawKey().size());
+
 }
 
 void TestKeys::testFileKey()
 {
-    QFETCH(FileKey::Type, type);
-    QFETCH(QString, typeString);
+    QFETCH(QString, type);
 
-    QString name = QString("FileKey").append(typeString);
+    QString name = QString("FileKey").append(type);
 
     KeePass2Reader reader;
 
     QString dbFilename = QString("%1/%2.kdbx").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
     QString keyFilename = QString("%1/%2.key").arg(QString(KEEPASSX_TEST_DATA_DIR), name);
 
-    auto compositeKey = QSharedPointer<CompositeKey>::create();
-    auto fileKey = QSharedPointer<FileKey>::create();
-    QVERIFY(fileKey->load(keyFilename));
-    QCOMPARE(fileKey->rawKey().size(), 32);
+    CompositeKey compositeKey;
+    FileKey fileKey;
+    QVERIFY(fileKey.load(keyFilename));
+    QCOMPARE(fileKey.rawKey().size(), 32);
+    compositeKey.addKey(fileKey);
 
-    QCOMPARE(fileKey->type(), type);
-
-    compositeKey->addKey(fileKey);
-
-    auto db = QSharedPointer<Database>::create();
-    QVERIFY(db->open(dbFilename, compositeKey, nullptr, false));
+    Database* db = reader.readDatabase(dbFilename, compositeKey);
+    QVERIFY(db);
     QVERIFY(!reader.hasError());
     QCOMPARE(db->metadata()->name(), QString("%1 Database").arg(name));
+
+    delete db;
 }
 
-// clang-format off
 void TestKeys::testFileKey_data()
 {
-    QTest::addColumn<FileKey::Type>("type");
-    QTest::addColumn<QString>("typeString");
-    QTest::newRow("Xml")             << FileKey::KeePass2XML    << QString("Xml");
-    QTest::newRow("XmlBrokenBase64") << FileKey::Hashed         << QString("XmlBrokenBase64");
-    QTest::newRow("Binary")          << FileKey::FixedBinary    << QString("Binary");
-    QTest::newRow("Hex")             << FileKey::FixedBinaryHex << QString("Hex");
-    QTest::newRow("Hashed")          << FileKey::Hashed         << QString("Hashed");
+    QTest::addColumn<QString>("type");
+    QTest::newRow("Xml") << QString("Xml");
+    QTest::newRow("XmlBrokenBase64") << QString("XmlBrokenBase64");
+    QTest::newRow("Binary") << QString("Binary");
+    QTest::newRow("Hex") << QString("Hex");
+    QTest::newRow("Hashed") << QString("Hashed");
 }
-// clang-format on
 
 void TestKeys::testCreateFileKey()
-{
-    QBuffer keyBuffer1;
-    keyBuffer1.open(QBuffer::ReadWrite);
-
-    FileKey::create(&keyBuffer1, 128);
-    QCOMPARE(keyBuffer1.size(), 128);
-
-    QBuffer keyBuffer2;
-    keyBuffer2.open(QBuffer::ReadWrite);
-    FileKey::create(&keyBuffer2, 64);
-    QCOMPARE(keyBuffer2.size(), 64);
-}
-
-void TestKeys::testCreateAndOpenFileKey()
 {
     const QString dbName("testCreateFileKey database");
 
@@ -130,12 +144,12 @@ void TestKeys::testCreateAndOpenFileKey()
     FileKey::create(&keyBuffer);
     keyBuffer.reset();
 
-    auto fileKey = QSharedPointer<FileKey>::create();
-    QVERIFY(fileKey->load(&keyBuffer));
-    auto compositeKey = QSharedPointer<CompositeKey>::create();
-    compositeKey->addKey(fileKey);
+    FileKey fileKey;
+    QVERIFY(fileKey.load(&keyBuffer));
+    CompositeKey compositeKey;
+    compositeKey.addKey(fileKey);
 
-    QScopedPointer<Database> dbOrg(new Database());
+    Database* dbOrg = new Database();
     QVERIFY(dbOrg->setKey(compositeKey));
     dbOrg->metadata()->setName(dbName);
 
@@ -143,38 +157,16 @@ void TestKeys::testCreateAndOpenFileKey()
     dbBuffer.open(QBuffer::ReadWrite);
 
     KeePass2Writer writer;
-    writer.writeDatabase(&dbBuffer, dbOrg.data());
-    bool writeSuccess = writer.writeDatabase(&dbBuffer, dbOrg.data());
-    if (writer.hasError()) {
-        QFAIL(writer.errorString().toUtf8().constData());
-    }
-    QVERIFY(writeSuccess);
+    writer.writeDatabase(&dbBuffer, dbOrg);
     dbBuffer.reset();
+    delete dbOrg;
 
     KeePass2Reader reader;
-    auto dbRead = QSharedPointer<Database>::create();
-    reader.readDatabase(&dbBuffer, compositeKey, dbRead.data());
-    if (reader.hasError()) {
-        QFAIL(reader.errorString().toUtf8().constData());
-    }
+    Database* dbRead = reader.readDatabase(&dbBuffer, compositeKey);
     QVERIFY(dbRead);
+    QVERIFY(!reader.hasError());
     QCOMPARE(dbRead->metadata()->name(), dbName);
-}
-
-void TestKeys::testFileKeyHash()
-{
-    QBuffer keyBuffer;
-    keyBuffer.open(QBuffer::ReadWrite);
-
-    FileKey::create(&keyBuffer);
-
-    CryptoHash cryptoHash(CryptoHash::Sha256);
-    cryptoHash.addData(keyBuffer.data());
-
-    FileKey fileKey;
-    fileKey.load(&keyBuffer);
-
-    QCOMPARE(fileKey.rawKey(), cryptoHash.result());
+    delete dbRead;
 }
 
 void TestKeys::testFileKeyError()
@@ -203,102 +195,17 @@ void TestKeys::benchmarkTransformKey()
         QSKIP("Benchmark skipped. Set env variable BENCHMARK=1 to enable.");
     }
 
-    auto pwKey = QSharedPointer<PasswordKey>::create();
-    pwKey->setPassword("password");
-    auto compositeKey = QSharedPointer<CompositeKey>::create();
-    compositeKey->addKey(pwKey);
+    PasswordKey pwKey;
+    pwKey.setPassword("password");
+    CompositeKey compositeKey;
+    compositeKey.addKey(pwKey);
 
     QByteArray seed(32, '\x4B');
 
-    QByteArray result;
-    AesKdf kdf;
-    kdf.setSeed(seed);
-    kdf.setRounds(1e6);
+    bool ok;
+    QString errorString;
 
-    QBENCHMARK
-    {
-        Q_UNUSED(compositeKey->transform(kdf, result));
-    };
-}
-
-void TestKeys::testCompositeKeyComponents()
-{
-    auto passwordKeyEnc = QSharedPointer<PasswordKey>::create("password");
-    auto fileKeyEnc = QSharedPointer<FileKey>::create();
-    QString error;
-    fileKeyEnc->load(QString("%1/%2").arg(QString(KEEPASSX_TEST_DATA_DIR), "FileKeyHashed.key"), &error);
-    if (!error.isEmpty()) {
-        QFAIL(qPrintable(error));
+    QBENCHMARK {
+        compositeKey.transform(seed, 1e6, &ok, &errorString);
     }
-    auto challengeResponseKeyEnc = QSharedPointer<MockChallengeResponseKey>::create(QByteArray(16, 0x10));
-
-    auto compositeKeyEnc = QSharedPointer<CompositeKey>::create();
-    compositeKeyEnc->addKey(passwordKeyEnc);
-    compositeKeyEnc->addKey(fileKeyEnc);
-    compositeKeyEnc->addChallengeResponseKey(challengeResponseKeyEnc);
-
-    auto db1 = QSharedPointer<Database>::create();
-    db1->setKey(compositeKeyEnc);
-
-    KeePass2Writer writer;
-    QBuffer buffer;
-    buffer.open(QBuffer::ReadWrite);
-    QVERIFY(writer.writeDatabase(&buffer, db1.data()));
-
-    buffer.seek(0);
-    auto db2 = QSharedPointer<Database>::create();
-    KeePass2Reader reader;
-    auto compositeKeyDec1 = QSharedPointer<CompositeKey>::create();
-
-    // try decryption and subsequently add key components until decryption is successful
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec1, db2.data()));
-    QVERIFY(reader.hasError());
-
-    compositeKeyDec1->addKey(passwordKeyEnc);
-    buffer.seek(0);
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec1, db2.data()));
-    QVERIFY(reader.hasError());
-
-    compositeKeyDec1->addKey(fileKeyEnc);
-    buffer.seek(0);
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec1, db2.data()));
-    QVERIFY(reader.hasError());
-
-    compositeKeyDec1->addChallengeResponseKey(challengeResponseKeyEnc);
-    buffer.seek(0);
-    QVERIFY(reader.readDatabase(&buffer, compositeKeyDec1, db2.data()));
-    // now we should be able to open the database
-    if (reader.hasError()) {
-        QFAIL(qPrintable(reader.errorString()));
-    }
-
-    // try the same again, but this time with one wrong key component each time
-    auto compositeKeyDec2 = QSharedPointer<CompositeKey>::create();
-    compositeKeyDec2->addKey(QSharedPointer<PasswordKey>::create("wrong password"));
-    compositeKeyDec2->addKey(fileKeyEnc);
-    compositeKeyDec2->addChallengeResponseKey(challengeResponseKeyEnc);
-    buffer.seek(0);
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec2, db2.data()));
-    QVERIFY(reader.hasError());
-
-    auto compositeKeyDec3 = QSharedPointer<CompositeKey>::create();
-    compositeKeyDec3->addKey(passwordKeyEnc);
-    auto fileKeyWrong = QSharedPointer<FileKey>::create();
-    fileKeyWrong->load(QString("%1/%2").arg(QString(KEEPASSX_TEST_DATA_DIR), "FileKeyHashed2.key"), &error);
-    if (!error.isEmpty()) {
-        QFAIL(qPrintable(error));
-    }
-    compositeKeyDec3->addKey(fileKeyWrong);
-    compositeKeyDec3->addChallengeResponseKey(challengeResponseKeyEnc);
-    buffer.seek(0);
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec3, db2.data()));
-    QVERIFY(reader.hasError());
-
-    auto compositeKeyDec4 = QSharedPointer<CompositeKey>::create();
-    compositeKeyDec4->addKey(passwordKeyEnc);
-    compositeKeyDec4->addKey(fileKeyEnc);
-    compositeKeyDec4->addChallengeResponseKey(QSharedPointer<MockChallengeResponseKey>::create(QByteArray(16, 0x20)));
-    buffer.seek(0);
-    QVERIFY(!reader.readDatabase(&buffer, compositeKeyDec4, db2.data()));
-    QVERIFY(reader.hasError());
 }

@@ -18,23 +18,61 @@
 #ifndef KEEPASSX_EDITENTRYWIDGET_P_H
 #define KEEPASSX_EDITENTRYWIDGET_P_H
 
-#include <QListView>
+#include <QListWidget>
 #include <QScrollBar>
+#include <QSize>
+#include <QStyledItemDelegate>
+
+class CategoryListViewDelegate : public QStyledItemDelegate
+{
+public:
+    explicit CategoryListViewDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
+    {
+        QSize size = QStyledItemDelegate::sizeHint(option, index);
+        size.setHeight(qMax(size.height(), 22));
+        return size;
+    }
+};
+
+class CategoryListWidget : public QListWidget
+{
+public:
+    explicit CategoryListWidget(QWidget* parent = 0) : QListWidget(parent)
+    {
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        setItemDelegate(new CategoryListViewDelegate(this));
+    }
+
+    virtual QSize sizeHint() const
+    {
+        QSize sizeHint = QListWidget::sizeHint();
+
+        int width = sizeHintForColumn(0) + frameWidth() * 2 + 5;
+        if (verticalScrollBar()->isVisible()) {
+            width += verticalScrollBar()->width();
+        }
+        sizeHint.setWidth(width);
+
+        return sizeHint;
+    }
+};
 
 class AttributesListView : public QListView
 {
 public:
-    explicit AttributesListView(QWidget* parent = nullptr)
-        : QListView(parent)
+    explicit AttributesListView(QWidget* parent = 0) : QListView(parent)
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        setItemDelegate(new CategoryListViewDelegate(this));
     }
 
-    QSize sizeHint() const override
+    virtual QSize sizeHint() const
     {
         QSize sizeHint = QListView::sizeHint();
 
-        int width = sizeHintForColumn(0) + frameWidth() * 2;
+        int width = sizeHintForColumn(0) + frameWidth() * 2 + 5;
         if (verticalScrollBar()->isVisible()) {
             width += verticalScrollBar()->width();
         }

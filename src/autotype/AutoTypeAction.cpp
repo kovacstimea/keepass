@@ -34,6 +34,7 @@ void AutoTypeChar::accept(AutoTypeExecutor* executor)
     executor->execChar(this);
 }
 
+
 AutoTypeKey::AutoTypeKey(Qt::Key key)
     : key(key)
 {
@@ -48,6 +49,7 @@ void AutoTypeKey::accept(AutoTypeExecutor* executor)
 {
     executor->execKey(this);
 }
+
 
 AutoTypeDelay::AutoTypeDelay(int delayMs)
     : delayMs(delayMs)
@@ -64,6 +66,7 @@ void AutoTypeDelay::accept(AutoTypeExecutor* executor)
     executor->execDelay(this);
 }
 
+
 AutoTypeClearField::AutoTypeClearField()
 {
 }
@@ -78,6 +81,7 @@ void AutoTypeClearField::accept(AutoTypeExecutor* executor)
     executor->execClearField(this);
 }
 
+
 void AutoTypeExecutor::execDelay(AutoTypeDelay* action)
 {
     Tools::wait(action->delayMs);
@@ -86,10 +90,6 @@ void AutoTypeExecutor::execDelay(AutoTypeDelay* action)
 void AutoTypeExecutor::execClearField(AutoTypeClearField* action)
 {
     Q_UNUSED(action);
-}
 
-AutoTypeAction::~AutoTypeAction()
-{
-    // This makes sure that AutoTypeAction's vtable is placed
-    // in this translation unit.
+    // TODO: implement
 }

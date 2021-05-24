@@ -24,28 +24,13 @@
 #include "core/Group.h"
 #include "gui/EditWidget.h"
 
-class CustomData;
 class EditWidgetIcons;
 class EditWidgetProperties;
 
-namespace Ui
-{
+namespace Ui {
     class EditGroupWidgetMain;
     class EditWidget;
-} // namespace Ui
-
-class IEditGroupPage
-{
-public:
-    virtual ~IEditGroupPage()
-    {
-    }
-    virtual QString name() = 0;
-    virtual QIcon icon() = 0;
-    virtual QWidget* createWidget() = 0;
-    virtual void set(QWidget* widget, Group* tempoaryGroup, QSharedPointer<Database> database) = 0;
-    virtual void assign(QWidget* widget) = 0;
-};
+}
 
 class EditGroupWidget : public EditWidget
 {
@@ -55,18 +40,13 @@ public:
     explicit EditGroupWidget(QWidget* parent = nullptr);
     ~EditGroupWidget();
 
-    void loadGroup(Group* group, bool create, const QSharedPointer<Database>& database);
+    void loadGroup(Group* group, bool create, Database* database);
     void clear();
 
-    void addEditPage(IEditGroupPage* page);
-
-signals:
+Q_SIGNALS:
     void editFinished(bool accepted);
-    void messageEditEntry(QString, MessageWidget::MessageType);
-    void messageEditEntryDismiss();
 
-private slots:
-    void apply();
+private Q_SLOTS:
     void save();
     void cancel();
 
@@ -74,20 +54,13 @@ private:
     void addTriStateItems(QComboBox* comboBox, bool inheritValue);
     int indexFromTriState(Group::TriState triState);
     Group::TriState triStateFromIndex(int index);
-    void setupModifiedTracking();
 
     const QScopedPointer<Ui::EditGroupWidgetMain> m_mainUi;
-
-    QPointer<QWidget> m_editGroupWidgetMain;
-    QPointer<EditWidgetIcons> m_editGroupWidgetIcons;
-    QPointer<EditWidgetProperties> m_editWidgetProperties;
-
-    QScopedPointer<Group> m_temporaryGroup;
-    QPointer<Group> m_group;
-    QSharedPointer<Database> m_db;
-
-    class ExtraPage;
-    QList<ExtraPage> m_extraPages;
+    QWidget* const m_editGroupWidgetMain;
+    EditWidgetIcons* const m_editGroupWidgetIcons;
+    EditWidgetProperties* const m_editWidgetProperties;
+    Group* m_group;
+    Database* m_database;
 
     Q_DISABLE_COPY(EditGroupWidget)
 };

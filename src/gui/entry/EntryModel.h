@@ -19,7 +19,6 @@
 #define KEEPASSX_ENTRYMODEL_H
 
 #include <QAbstractTableModel>
-#include <QPixmap>
 
 class Entry;
 class Group;
@@ -34,17 +33,7 @@ public:
         ParentGroup = 0,
         Title = 1,
         Username = 2,
-        Password = 3,
-        Url = 4,
-        Notes = 5,
-        Expires = 6,
-        Created = 7,
-        Modified = 8,
-        Accessed = 9,
-        Paperclip = 10,
-        Attachments = 11,
-        Totp = 12,
-        Size = 13
+        Url = 3
     };
 
     explicit EntryModel(QObject* parent = nullptr);
@@ -61,27 +50,20 @@ public:
     QStringList mimeTypes() const override;
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
 
+    void setEntryList(const QList<Entry*>& entries);
+
+Q_SIGNALS:
+    void switchedToEntryListMode();
+    void switchedToGroupMode();
+
+public Q_SLOTS:
     void setGroup(Group* group);
-    void setEntries(const QList<Entry*>& entries);
 
-    bool isUsernamesHidden() const;
-    void setUsernamesHidden(bool hide);
-    bool isPasswordsHidden() const;
-    void setPasswordsHidden(bool hide);
-
-signals:
-    void usernamesHiddenChanged();
-    void passwordsHiddenChanged();
-
-private slots:
+private Q_SLOTS:
     void entryAboutToAdd(Entry* entry);
     void entryAdded(Entry* entry);
     void entryAboutToRemove(Entry* entry);
     void entryRemoved();
-    void entryAboutToMoveUp(int row);
-    void entryMovedUp();
-    void entryAboutToMoveDown(int row);
-    void entryMovedDown();
     void entryDataChanged(Entry* entry);
 
 private:
@@ -92,12 +74,6 @@ private:
     QList<Entry*> m_entries;
     QList<Entry*> m_orgEntries;
     QList<const Group*> m_allGroups;
-
-    bool m_hideUsernames;
-    bool m_hidePasswords;
-
-    const QString HiddenContentDisplay;
-    const Qt::DateFormat DateFormat;
 };
 
 #endif // KEEPASSX_ENTRYMODEL_H

@@ -4,8 +4,6 @@
 <dict>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
-  <key>CFBundleAllowMixedLocalizations</key>
-  <true/>
   <key>CFBundleDevelopmentRegion</key>
   <string>English</string>
   <key>CFBundleDisplayName</key>
@@ -15,7 +13,7 @@
   <key>CFBundleIconFile</key>
   <string>keepassxc.icns</string>
   <key>CFBundleIdentifier</key>
-  <string>org.keepassxc.keepassxc</string>
+  <string>org.keepassx.keepassxc</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
@@ -25,11 +23,11 @@
   <key>CFBundleShortVersionString</key>
   <string>${KEEPASSXC_VERSION}</string>
   <key>CFBundleSignature</key>
-  <string>KPXC</string>
+  <string>KEPX</string>
   <key>CFBundleVersion</key>
   <string>${KEEPASSXC_VERSION_NUM}</string>
   <key>NSHumanReadableCopyright</key>
-    <string>Copyright 2016-2020 KeePassXC Development Team</string>
+    <string>Copyright 2016 KeePassXC Development Team</string>
     <key>CFBundleDocumentTypes</key>
     <array>
       <dict>

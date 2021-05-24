@@ -16,11 +16,11 @@
  */
 
 #include "KeePass1OpenWidget.h"
-#include "ui_DatabaseOpenWidget.h"
 
 #include <QFile>
 #include <QFileInfo>
 
+#include "ui_DatabaseOpenWidget.h"
 #include "core/Database.h"
 #include "core/Metadata.h"
 #include "format/KeePass1Reader.h"
@@ -29,7 +29,7 @@
 KeePass1OpenWidget::KeePass1OpenWidget(QWidget* parent)
     : DatabaseOpenWidget(parent)
 {
-    m_ui->labelHeadline->setText(tr("Import KeePass1 Database"));
+    m_ui->labelHeadline->setText(tr("Import KeePass1 database"));
 }
 
 void KeePass1OpenWidget::openDatabase()
@@ -37,29 +37,36 @@ void KeePass1OpenWidget::openDatabase()
     KeePass1Reader reader;
 
     QString password;
-    QString keyFileName = m_ui->keyFileLineEdit->text();
+    QString keyFileName;
 
-    if (!m_ui->editPassword->text().isEmpty() || m_retryUnlockWithEmptyPassword) {
+    if (m_ui->checkPassword->isChecked()) {
         password = m_ui->editPassword->text();
+    }
+
+    if (m_ui->checkKeyFile->isChecked()) {
+        keyFileName = m_ui->comboKeyFile->currentText();
     }
 
     QFile file(m_filename);
     if (!file.open(QIODevice::ReadOnly)) {
-        m_ui->messageWidget->showMessage(tr("Unable to open the database.").append("\n").append(file.errorString()),
-                                         MessageWidget::Error);
+        MessageBox::warning(this, tr("Error"), tr("Unable to open the database.").append("\n")
+                            .append(file.errorString()));
         return;
     }
-
+    if (m_db) {
+        delete m_db;
+    }
     QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     m_db = reader.readDatabase(&file, password, keyFileName);
     QApplication::restoreOverrideCursor();
 
     if (m_db) {
         m_db->metadata()->setName(QFileInfo(m_filename).completeBaseName());
-        emit dialogFinished(true);
-        clearForms();
-    } else {
-        m_ui->messageWidget->showMessage(tr("Unable to open the database.").append("\n").append(reader.errorString()),
-                                         MessageWidget::Error);
+        Q_EMIT editFinished(true);
+    }
+    else {
+        MessageBox::warning(this, tr("Error"), tr("Unable to open the database.").append("\n")
+                            .append(reader.errorString()));
+        m_ui->editPassword->clear();
     }
 }

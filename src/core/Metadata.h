@@ -18,18 +18,15 @@
 #ifndef KEEPASSX_METADATA_H
 #define KEEPASSX_METADATA_H
 
+#include <QColor>
 #include <QDateTime>
 #include <QHash>
-#include <QIcon>
 #include <QImage>
 #include <QPixmap>
 #include <QPixmapCache>
 #include <QPointer>
-#include <QSize>
-#include <QUuid>
 
-#include "core/CustomData.h"
-#include "core/Global.h"
+#include "core/Uuid.h"
 
 class Database;
 class Group;
@@ -51,7 +48,7 @@ public:
         QString defaultUserName;
         QDateTime defaultUserNameChanged;
         int maintenanceHistoryDays;
-        QString color;
+        QColor color;
         bool recycleBinEnabled;
         int historyMaxItems;
         int historyMaxSize;
@@ -63,10 +60,8 @@ public:
         bool protectPassword;
         bool protectUrl;
         bool protectNotes;
+        // bool autoEnableVisualHiding;
     };
-
-    void init();
-    void clear();
 
     QString generator() const;
     QString name() const;
@@ -75,20 +70,22 @@ public:
     QDateTime descriptionChanged() const;
     QString defaultUserName() const;
     QDateTime defaultUserNameChanged() const;
-    QDateTime settingsChanged() const;
     int maintenanceHistoryDays() const;
-    QString color() const;
+    QColor color() const;
     bool protectTitle() const;
     bool protectUsername() const;
     bool protectPassword() const;
     bool protectUrl() const;
     bool protectNotes() const;
-    QImage customIcon(const QUuid& uuid) const;
-    bool hasCustomIcon(const QUuid& uuid) const;
-    QPixmap customIconPixmap(const QUuid& uuid, IconSize size = IconSize::Default) const;
-    QHash<QUuid, QPixmap> customIconsPixmaps(IconSize size = IconSize::Default) const;
-    QList<QUuid> customIconsOrder() const;
+    // bool autoEnableVisualHiding() const;
+    QImage customIcon(const Uuid& uuid) const;
+    QPixmap customIconPixmap(const Uuid& uuid) const;
+    QPixmap customIconScaledPixmap(const Uuid& uuid) const;
+    bool containsCustomIcon(const Uuid& uuid) const;
+    QHash<Uuid, QImage> customIcons() const;
+    QList<Uuid> customIconsOrder() const;
     bool recycleBinEnabled() const;
+    QHash<Uuid, QPixmap> customIconsScaledPixmaps() const;
     Group* recycleBin();
     const Group* recycleBin() const;
     QDateTime recycleBinChanged() const;
@@ -96,13 +93,12 @@ public:
     QDateTime entryTemplatesGroupChanged() const;
     const Group* lastSelectedGroup() const;
     const Group* lastTopVisibleGroup() const;
-    QDateTime databaseKeyChanged() const;
-    int databaseKeyChangeRec() const;
-    int databaseKeyChangeForce() const;
+    QDateTime masterKeyChanged() const;
+    int masterKeyChangeRec() const;
+    int masterKeyChangeForce() const;
     int historyMaxItems() const;
     int historyMaxSize() const;
-    CustomData* customData();
-    const CustomData* customData() const;
+    QHash<QString, QString> customFields() const;
 
     static const int DefaultHistoryMaxItems;
     static const int DefaultHistoryMaxSize;
@@ -114,18 +110,18 @@ public:
     void setDescriptionChanged(const QDateTime& value);
     void setDefaultUserName(const QString& value);
     void setDefaultUserNameChanged(const QDateTime& value);
-    void setSettingsChanged(const QDateTime& value);
     void setMaintenanceHistoryDays(int value);
-    void setColor(const QString& value);
+    void setColor(const QColor& value);
     void setProtectTitle(bool value);
     void setProtectUsername(bool value);
     void setProtectPassword(bool value);
     void setProtectUrl(bool value);
     void setProtectNotes(bool value);
-    void addCustomIcon(const QUuid& uuid, const QImage& image);
-    void removeCustomIcon(const QUuid& uuid);
-    void copyCustomIcons(const QSet<QUuid>& iconList, const Metadata* otherMetadata);
-    QUuid findCustomIcon(const QImage& candidate);
+    // void setAutoEnableVisualHiding(bool value);
+    void addCustomIcon(const Uuid& uuid, const QImage& icon);
+    void addCustomIconScaled(const Uuid& uuid, const QImage& icon);
+    void removeCustomIcon(const Uuid& uuid);
+    void copyCustomIcons(const QSet<Uuid>& iconList, const Metadata* otherMetadata);
     void setRecycleBinEnabled(bool value);
     void setRecycleBin(Group* group);
     void setRecycleBinChanged(const QDateTime& value);
@@ -133,37 +129,37 @@ public:
     void setEntryTemplatesGroupChanged(const QDateTime& value);
     void setLastSelectedGroup(Group* group);
     void setLastTopVisibleGroup(Group* group);
-    void setDatabaseKeyChanged(const QDateTime& value);
+    void setMasterKeyChanged(const QDateTime& value);
     void setMasterKeyChangeRec(int value);
     void setMasterKeyChangeForce(int value);
     void setHistoryMaxItems(int value);
     void setHistoryMaxSize(int value);
+    void addCustomField(const QString& key, const QString& value);
+    void removeCustomField(const QString& key);
     void setUpdateDatetime(bool value);
     /*
      * Copy all attributes from other except:
      * - Group pointers/uuids
-     * - Database key changed date
+     * - Master key changed date
      * - Custom icons
      * - Custom fields
-     * - Settings changed date
      */
     void copyAttributesFrom(const Metadata* other);
 
-signals:
-    void metadataModified();
+Q_SIGNALS:
+    void nameTextChanged();
+    void modified();
 
 private:
     template <class P, class V> bool set(P& property, const V& value);
     template <class P, class V> bool set(P& property, const V& value, QDateTime& dateTime);
 
-    QByteArray hashImage(const QImage& image);
-
     MetadataData m_data;
 
-    QHash<QUuid, QIcon> m_customIcons;
-    QHash<QUuid, QImage> m_customIconsRaw;
-    QList<QUuid> m_customIconsOrder;
-    QHash<QByteArray, QUuid> m_customIconsHashes;
+    QHash<Uuid, QImage> m_customIcons;
+    mutable QHash<Uuid, QPixmapCache::Key> m_customIconCacheKeys;
+    mutable QHash<Uuid, QPixmapCache::Key> m_customIconScaledCacheKeys;
+    QList<Uuid> m_customIconsOrder;
 
     QPointer<Group> m_recycleBin;
     QDateTime m_recycleBinChanged;
@@ -173,9 +169,8 @@ private:
     QPointer<Group> m_lastTopVisibleGroup;
 
     QDateTime m_masterKeyChanged;
-    QDateTime m_settingsChanged;
 
-    QPointer<CustomData> m_customData;
+    QHash<QString, QString> m_customFields;
 
     bool m_updateDatetime;
 };

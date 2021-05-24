@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2010 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,17 +18,15 @@
 #ifndef KEEPASSX_TESTGROUP_H
 #define KEEPASSX_TESTGROUP_H
 
-#include "core/Database.h"
 #include <QObject>
+#include "core/Database.h"
 
 class TestGroup : public QObject
 {
     Q_OBJECT
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
-    void init();
-    void cleanup();
     void testParenting();
     void testSignals();
     void testEntries();
@@ -37,19 +34,13 @@ private slots:
     void testCopyCustomIcon();
     void testClone();
     void testCopyCustomIcons();
-    void testFindEntry();
-    void testFindGroupByPath();
-    void testPrint();
-    void testLocate();
-    void testAddEntryWithPath();
-    void testIsRecycled();
-    void testCopyDataFrom();
-    void testEquals();
-    void testChildrenSort();
-    void testHierarchy();
-    void testApplyGroupIconRecursively();
-    void testUsernamesRecursive();
-    void testMove();
+    void testMerge();
+    void testMergeConflict();
+    void testMergeDatabase();
+    void testMergeConflictKeepBoth();
+
+private:
+    Database* createMergeTestDatabase();
 };
 
 #endif // KEEPASSX_TESTGROUP_H

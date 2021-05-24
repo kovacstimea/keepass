@@ -1,5 +1,4 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -20,10 +19,6 @@
 #define KEEPASSX_CLIPBOARD_H
 
 #include <QObject>
-#ifdef Q_OS_MACOS
-#include "core/MacPasteboard.h"
-#include <QPointer>
-#endif
 
 class QTimer;
 
@@ -32,14 +27,14 @@ class Clipboard : public QObject
     Q_OBJECT
 
 public:
-    void setText(const QString& text, bool clear = true);
+    void setText(const QString& text);
 
     static Clipboard* instance();
 
-public slots:
+public Q_SLOTS:
     void clearCopiedText();
 
-private slots:
+private Q_SLOTS:
     void clearClipboard();
 
 private:
@@ -48,16 +43,10 @@ private:
     static Clipboard* m_instance;
 
     QTimer* m_timer;
-#ifdef Q_OS_MACOS
-    // This object lives for the whole program lifetime and we cannot delete it on exit,
-    // so ignore leak warnings. See https://bugreports.qt.io/browse/QTBUG-54832
-    static QPointer<MacPasteboard> m_pasteboard;
-#endif
     QString m_lastCopied;
 };
 
-inline Clipboard* clipboard()
-{
+inline Clipboard* clipboard() {
     return Clipboard::instance();
 }
 

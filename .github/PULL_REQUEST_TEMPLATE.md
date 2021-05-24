@@ -1,21 +1,33 @@
-[NOTE]: # ( Describe your changes in detail, why is this change required? )
-[NOTE]: # ( Explain large or complex code modifications. )
-[NOTE]: # ( If it fixes an open issue, please add "Fixes #XXX" )
+<!--- Provide a general summary of your changes in the title above -->
 
+## Description
+<!--- Describe your changes in detail -->
 
-## Screenshots
-[TIP]:  # ( Do not include screenshots of your actual database! )
+## Motivation and Context
+<!--- Why is this change required? What problem does it solve? -->
+<!--- If it fixes an open issue, please link to the issue here. -->
 
+## How Has This Been Tested?
+<!--- Please describe in detail how you tested your changes. -->
+<!--- Include details of your testing environment, and the tests you ran to -->
+<!--- see how your change affects other areas of the code, etc. -->
 
-## Testing strategy
-[NOTE]: # ( Please describe in detail how you tested your changes. )
-[TIP]:  # ( We expect new code to be covered by unit tests and documented with doc blocks! )
+## Screenshots (if appropriate):
 
+## Types of changes
+<!--- What types of changes does your code introduce? -->
+<!--- Please remove all lines which don't apply. -->
+- ✅ Bug fix (non-breaking change which fixes an issue)
+- ✅ New feature (non-breaking change which adds functionality)
+- ✅ Breaking change (fix or feature that would cause existing functionality to change)
 
-## Type of change
-[NOTE]: # ( Please remove all lines which don't apply. )
-- ✅ Bug fix (non-breaking change that fixes an issue)
-- ✅ New feature (change that adds functionality)
-- ✅ Breaking change (causes existing functionality to change)
-- ✅ Refactor (significant modification to existing code)
-- ✅ Documentation (non-code change)
+## Checklist:
+<!--- Please go over all the following points. -->
+<!--- Again, remove any lines which don't apply. -->
+<!--- Pull Requests that don't fulfill all [REQUIRED] requisites are likely -->
+<!--- to be sent back to you for correction or will be rejected.  -->
+- ✅ I have read the **CONTRIBUTING** document. **[REQUIRED]**
+- ✅ My code follows the code style of this project. **[REQUIRED]**
+- ✅ All new and existing tests passed. **[REQUIRED]**
+- ✅ My change requires a change to the documentation and I have updated it accordingly.
+- ✅ I have added tests to cover my changes.

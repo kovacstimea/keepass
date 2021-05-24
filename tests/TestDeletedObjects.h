@@ -27,9 +27,9 @@ class TestDeletedObjects : public QObject
     Q_OBJECT
 
 private:
-    void createAndDelete(QSharedPointer<Database> db, int delObjectsSize);
+    void createAndDelete(Database* db, int delObjectsSize);
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
     void testDeletedObjectsFromFile();
     void testDeletedObjectsFromNewDb();

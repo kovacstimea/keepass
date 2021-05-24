@@ -16,13 +16,15 @@
  */
 
 #include "TestGroupModel.h"
-#include "TestGlobal.h"
 
 #include <QSignalSpy>
+#include <QTest>
 
+#include "modeltest.h"
+#include "core/Database.h"
+#include "core/Group.h"
 #include "crypto/Crypto.h"
 #include "gui/group/GroupModel.h"
-#include "modeltest.h"
 
 QTEST_GUILESS_MAIN(TestGroupModel)
 
@@ -76,18 +78,18 @@ void TestGroupModel::test()
     QCOMPARE(model->data(index12).toString(), QString("group12"));
     QCOMPARE(model->data(index121).toString(), QString("group121"));
 
-    QSignalSpy spy1(model, SIGNAL(dataChanged(QModelIndex, QModelIndex)));
+    QSignalSpy spy1(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)));
     group11->setName("test");
     group121->setIcon(4);
     QCOMPARE(spy1.count(), 2);
     QCOMPARE(model->data(index11).toString(), QString("test"));
 
-    QSignalSpy spyAboutToAdd(model, SIGNAL(rowsAboutToBeInserted(QModelIndex, int, int)));
-    QSignalSpy spyAdded(model, SIGNAL(rowsInserted(QModelIndex, int, int)));
-    QSignalSpy spyAboutToRemove(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex, int, int)));
-    QSignalSpy spyRemoved(model, SIGNAL(rowsRemoved(QModelIndex, int, int)));
-    QSignalSpy spyAboutToMove(model, SIGNAL(rowsAboutToBeMoved(QModelIndex, int, int, QModelIndex, int)));
-    QSignalSpy spyMoved(model, SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
+    QSignalSpy spyAboutToAdd(model, SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)));
+    QSignalSpy spyAdded(model, SIGNAL(rowsInserted(QModelIndex,int,int)));
+    QSignalSpy spyAboutToRemove(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)));
+    QSignalSpy spyRemoved(model, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+    QSignalSpy spyAboutToMove(model, SIGNAL(rowsAboutToBeMoved(QModelIndex,int,int,QModelIndex,int)));
+    QSignalSpy spyMoved(model, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)));
 
     Group* group2 = new Group();
     group2->setObjectName("group2");
@@ -129,7 +131,7 @@ void TestGroupModel::test()
     QCOMPARE(spyMoved.count(), 3);
     QVERIFY(index12.isValid());
     QCOMPARE(model->data(index12).toString(), QString("group12"));
-    QCOMPARE(model->data(index12.model()->index(0, 0, index12)).toString(), QString("group121"));
+    QCOMPARE(model->data(index12.child(0, 0)).toString(), QString("group121"));
 
     delete group12;
     QCOMPARE(spyAboutToAdd.count(), 1);

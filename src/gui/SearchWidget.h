@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2016 Jonathan White <support@dmapps.us>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,67 +18,53 @@
 #ifndef KEEPASSX_SEARCHWIDGET_H
 #define KEEPASSX_SEARCHWIDGET_H
 
-#include <QTimer>
 #include <QWidget>
+#include <QTimer>
 
-#include "core/SignalMultiplexer.h"
 #include "gui/DatabaseWidget.h"
+#include "core/SignalMultiplexer.h"
 
-namespace Ui
-{
+namespace Ui {
     class SearchWidget;
 }
-
-class PopupHelpWidget;
 
 class SearchWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit SearchWidget(QWidget* parent = nullptr);
-    ~SearchWidget() override;
-
-    Q_DISABLE_COPY(SearchWidget)
+    explicit SearchWidget(QWidget *parent = 0);
+    ~SearchWidget();
 
     void connectSignals(SignalMultiplexer& mx);
     void setCaseSensitive(bool state);
-    void setLimitGroup(bool state);
 
 protected:
-    // Filter key presses in the search field
-    bool eventFilter(QObject* obj, QEvent* event) override;
+    bool eventFilter(QObject *obj, QEvent *event);
 
 signals:
-    void search(const QString& text);
+    void search(const QString &text);
     void caseSensitiveChanged(bool state);
-    void limitGroupChanged(bool state);
     void escapePressed();
     void copyPressed();
     void downPressed();
     void enterPressed();
 
 public slots:
-    void databaseChanged(DatabaseWidget* dbWidget = nullptr);
+    void databaseChanged(DatabaseWidget* dbWidget);
 
 private slots:
     void startSearchTimer();
     void startSearch();
     void updateCaseSensitive();
-    void updateLimitGroup();
     void searchFocus();
-    void toggleHelp();
-    void showSearchMenu();
-    void resetSearchClearTimer();
 
 private:
     const QScopedPointer<Ui::SearchWidget> m_ui;
-    PopupHelpWidget* m_helpWidget;
     QTimer* m_searchTimer;
-    QTimer* m_clearSearchTimer;
-    QAction* m_actionCaseSensitive;
-    QAction* m_actionLimitGroup;
-    QMenu* m_searchMenu;
+    QAction *m_actionCaseSensitive;
+
+    Q_DISABLE_COPY(SearchWidget)
 };
 
 #endif // SEARCHWIDGET_H

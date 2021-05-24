@@ -20,7 +20,6 @@
 
 #include <QDateTime>
 #include <QObject>
-#include <QSharedPointer>
 
 class Database;
 
@@ -28,7 +27,7 @@ class TestKeePass1Reader : public QObject
 {
     Q_OBJECT
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
     void testBasic();
     void testMasterKey();
@@ -44,9 +43,9 @@ private slots:
 
 private:
     static QDateTime genDT(int year, int month, int day, int hour, int min);
-    static void reopenDatabase(QSharedPointer<Database> db, const QString& password, const QString& keyfileName);
+    static void reopenDatabase(Database* db, const QString& password, const QString& keyfileName);
 
-    QSharedPointer<Database> m_db;
+    Database* m_db;
 };
 
 #endif // KEEPASSX_TESTKEEPASS1READER_H

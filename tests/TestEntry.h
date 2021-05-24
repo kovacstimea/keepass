@@ -26,19 +26,11 @@ class TestEntry : public QObject
 {
     Q_OBJECT
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
     void testHistoryItemDeletion();
     void testCopyDataFrom();
     void testClone();
-    void testResolveUrl();
-    void testResolveUrlPlaceholders();
-    void testResolveRecursivePlaceholders();
-    void testResolveReferencePlaceholders();
-    void testResolveNonIdPlaceholdersToUuid();
-    void testResolveClonedEntry();
-    void testIsRecycled();
-    void testMove();
 };
 
 #endif // KEEPASSX_TESTENTRY_H

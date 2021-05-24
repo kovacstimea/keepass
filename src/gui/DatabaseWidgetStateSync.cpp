@@ -1,63 +1,46 @@
 /*
- * Copyright (C) 2018 KeePassXC Team <team@keepassxc.org>
- * Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
- * Copyright (C) 2014 Florian Geyer <blueice@fobos.de>
+ *  Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
+ *  Copyright (C) 2014 Florian Geyer <blueice@fobos.de>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 or (at your option)
- * version 3 of the License.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 or (at your option)
+ *  version 3 of the License.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "DatabaseWidgetStateSync.h"
 
 #include "core/Config.h"
-#include <QCoreApplication>
 
 DatabaseWidgetStateSync::DatabaseWidgetStateSync(QObject* parent)
     : QObject(parent)
     , m_activeDbWidget(nullptr)
     , m_blockUpdates(false)
 {
-    m_mainSplitterSizes = variantToIntList(config()->get(Config::GUI_SplitterState));
-    m_previewSplitterSizes = variantToIntList(config()->get(Config::GUI_PreviewSplitterState));
-    m_hideUsernames = config()->get(Config::GUI_HideUsernames).toBool();
-    m_hidePasswords = true;
-    m_listViewState = config()->get(Config::GUI_ListViewState).toByteArray();
-    m_searchViewState = config()->get(Config::GUI_SearchViewState).toByteArray();
-
-    connect(qApp, &QCoreApplication::aboutToQuit, this, &DatabaseWidgetStateSync::sync);
+    m_splitterSizes = variantToIntList(config()->get("GUI/SplitterState"));
+    m_columnSizesList = variantToIntList(config()->get("GUI/EntryListColumnSizes"));
+    m_columnSizesSearch = variantToIntList(config()->get("GUI/EntrySearchColumnSizes"));
 }
 
 DatabaseWidgetStateSync::~DatabaseWidgetStateSync()
 {
-}
-
-/**
- * Sync state with persistent storage.
- */
-void DatabaseWidgetStateSync::sync()
-{
-    config()->set(Config::GUI_SplitterState, intListToVariant(m_mainSplitterSizes));
-    config()->set(Config::GUI_PreviewSplitterState, intListToVariant(m_previewSplitterSizes));
-    config()->set(Config::GUI_HideUsernames, m_hideUsernames);
-    config()->set(Config::GUI_ListViewState, m_listViewState);
-    config()->set(Config::GUI_SearchViewState, m_searchViewState);
-    config()->sync();
+    config()->set("GUI/SplitterState", intListToVariant(m_splitterSizes));
+    config()->set("GUI/EntryListColumnSizes", intListToVariant(m_columnSizesList));
+    config()->set("GUI/EntrySearchColumnSizes", intListToVariant(m_columnSizesSearch));
 }
 
 void DatabaseWidgetStateSync::setActive(DatabaseWidget* dbWidget)
 {
     if (m_activeDbWidget) {
-        disconnect(m_activeDbWidget, nullptr, this, nullptr);
+        disconnect(m_activeDbWidget, 0, this, 0);
     }
 
     m_activeDbWidget = dbWidget;
@@ -65,77 +48,44 @@ void DatabaseWidgetStateSync::setActive(DatabaseWidget* dbWidget)
     if (m_activeDbWidget) {
         m_blockUpdates = true;
 
-        if (!m_mainSplitterSizes.isEmpty()) {
-            m_activeDbWidget->setMainSplitterSizes(m_mainSplitterSizes);
-        }
+        if (!m_splitterSizes.isEmpty())
+            m_activeDbWidget->setSplitterSizes(m_splitterSizes);
 
-        if (!m_previewSplitterSizes.isEmpty()) {
-            m_activeDbWidget->setPreviewSplitterSizes(m_previewSplitterSizes);
-        }
-
-        if (m_activeDbWidget->isSearchActive()) {
+        if (m_activeDbWidget->isInSearchMode())
             restoreSearchView();
-        } else {
+        else
             restoreListView();
-        }
 
         m_blockUpdates = false;
 
-        connect(m_activeDbWidget, SIGNAL(mainSplitterSizesChanged()), SLOT(updateSplitterSizes()));
-        connect(m_activeDbWidget, SIGNAL(previewSplitterSizesChanged()), SLOT(updateSplitterSizes()));
-        connect(m_activeDbWidget, SIGNAL(entryViewStateChanged()), SLOT(updateViewState()));
-        connect(m_activeDbWidget, SIGNAL(listModeActivated()), SLOT(restoreListView()));
-        connect(m_activeDbWidget, SIGNAL(searchModeActivated()), SLOT(restoreSearchView()));
-        connect(m_activeDbWidget, SIGNAL(listModeAboutToActivate()), SLOT(blockUpdates()));
-        connect(m_activeDbWidget, SIGNAL(searchModeAboutToActivate()), SLOT(blockUpdates()));
+        connect(m_activeDbWidget, SIGNAL(splitterSizesChanged()),
+                SLOT(updateSplitterSizes()));
+        connect(m_activeDbWidget, SIGNAL(entryColumnSizesChanged()),
+                SLOT(updateColumnSizes()));
+        connect(m_activeDbWidget, SIGNAL(listModeActivated()),
+                SLOT(restoreListView()));
+        connect(m_activeDbWidget, SIGNAL(searchModeActivated()),
+                SLOT(restoreSearchView()));
+        connect(m_activeDbWidget, SIGNAL(listModeAboutToActivate()),
+                SLOT(blockUpdates()));
+        connect(m_activeDbWidget, SIGNAL(searchModeAboutToActivate()),
+                SLOT(blockUpdates()));
     }
 }
 
-/**
- * Restore entry view list view state
- *
- * NOTE:
- * States of entry view 'Hide Usernames'/'Hide Passwords' settings are global,
- * i.e. they are the same for both list and search mode
- *
- * NOTE:
- * If m_listViewState is empty, the list view has been activated for the first
- * time after starting with a clean (or invalid) config.
- */
 void DatabaseWidgetStateSync::restoreListView()
 {
-    m_activeDbWidget->setUsernamesHidden(m_hideUsernames);
-    m_activeDbWidget->setPasswordsHidden(m_hidePasswords);
-
-    if (!m_listViewState.isEmpty()) {
-        m_activeDbWidget->setEntryViewState(m_listViewState);
+    if (!m_columnSizesList.isEmpty()) {
+        m_activeDbWidget->setEntryViewHeaderSizes(m_columnSizesList);
     }
 
     m_blockUpdates = false;
 }
 
-/**
- * Restore entry view search view state
- *
- * NOTE:
- * States of entry view 'Hide Usernames'/'Hide Passwords' settings are global,
- * i.e. they are the same for both list and search mode
- *
- * NOTE:
- * If m_searchViewState is empty, the search view has been activated for the
- * first time after starting with a clean (or invalid) config. Thus, save the
- * current state. Without this, m_searchViewState would remain empty until
- * there is an actual view state change (e.g. column is resized)
- */
 void DatabaseWidgetStateSync::restoreSearchView()
 {
-    m_activeDbWidget->setUsernamesHidden(m_hideUsernames);
-    m_activeDbWidget->setPasswordsHidden(m_hidePasswords);
-
-    if (!m_searchViewState.isEmpty()) {
-        m_activeDbWidget->setEntryViewState(m_searchViewState);
-    } else {
-        m_searchViewState = m_activeDbWidget->entryViewState();
+    if (!m_columnSizesSearch.isEmpty()) {
+        m_activeDbWidget->setEntryViewHeaderSizes(m_columnSizesSearch);
     }
 
     m_blockUpdates = false;
@@ -152,30 +102,20 @@ void DatabaseWidgetStateSync::updateSplitterSizes()
         return;
     }
 
-    m_mainSplitterSizes = m_activeDbWidget->mainSplitterSizes();
-    m_previewSplitterSizes = m_activeDbWidget->previewSplitterSizes();
+    m_splitterSizes = m_activeDbWidget->splitterSizes();
 }
 
-/**
- * Update entry view list/search view state
- *
- * NOTE:
- * States of entry view 'Hide Usernames'/'Hide Passwords' settings are global,
- * i.e. they are the same for both list and search mode
- */
-void DatabaseWidgetStateSync::updateViewState()
+void DatabaseWidgetStateSync::updateColumnSizes()
 {
     if (m_blockUpdates) {
         return;
     }
 
-    m_hideUsernames = m_activeDbWidget->isUsernamesHidden();
-    m_hidePasswords = m_activeDbWidget->isPasswordsHidden();
-
-    if (m_activeDbWidget->isSearchActive()) {
-        m_searchViewState = m_activeDbWidget->entryViewState();
-    } else {
-        m_listViewState = m_activeDbWidget->entryViewState();
+    if (m_activeDbWidget->isGroupSelected()) {
+        m_columnSizesList = m_activeDbWidget->entryHeaderViewSizes();
+    }
+    else {
+        m_columnSizesSearch = m_activeDbWidget->entryHeaderViewSizes();
     }
 }
 
@@ -189,7 +129,8 @@ QList<int> DatabaseWidgetStateSync::variantToIntList(const QVariant& variant)
         int size = var.toInt(&ok);
         if (ok) {
             result.append(size);
-        } else {
+        }
+        else {
             result.clear();
             break;
         }

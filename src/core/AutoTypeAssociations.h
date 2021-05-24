@@ -43,16 +43,12 @@ public:
     AutoTypeAssociations::Association get(int index) const;
     QList<AutoTypeAssociations::Association> getAll() const;
     int size() const;
-    int associationsSize() const;
     void clear();
-
-    bool operator==(const AutoTypeAssociations& other) const;
-    bool operator!=(const AutoTypeAssociations& other) const;
 
 private:
     QList<AutoTypeAssociations::Association> m_associations;
 
-signals:
+Q_SIGNALS:
     void modified();
     void dataChanged(int index);
     void aboutToAdd(int index);

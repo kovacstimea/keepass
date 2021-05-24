@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2016 Lennart Glauer <mail@lennart-glauer.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +22,7 @@
 #include <QtPlugin>
 #include <memory>
 
+#include "AppKit.h"
 #include "autotype/AutoTypePlatformPlugin.h"
 #include "autotype/AutoTypeAction.h"
 
@@ -41,27 +41,29 @@ public:
     bool registerGlobalShortcut(Qt::Key key, Qt::KeyboardModifiers modifiers) override;
     void unregisterGlobalShortcut(Qt::Key key, Qt::KeyboardModifiers modifiers) override;
     int platformEventFilter(void* event) override;
+    int initialTimeout() override;
     bool raiseWindow(WId pid) override;
     AutoTypeExecutor* createExecutor() override;
 
-    bool hideOwnWindow() override;
+    bool raiseLastActiveWindow() override;
     bool raiseOwnWindow() override;
 
     void sendChar(const QChar& ch, bool isKeyDown);
-    void sendKey(Qt::Key key, bool isKeyDown, Qt::KeyboardModifiers modifiers);
+    void sendKey(Qt::Key key, bool isKeyDown);
 
-signals:
+Q_SIGNALS:
     void globalShortcutTriggered();
 
 private:
+    std::unique_ptr<AppKit> m_appkit;
     EventHotKeyRef m_hotkeyRef;
     EventHotKeyID m_hotkeyId;
 
     static uint16 qtToNativeKeyCode(Qt::Key key);
-    static CGEventFlags qtToNativeModifiers(Qt::KeyboardModifiers modifiers, bool native);
+    static uint16 qtToNativeModifiers(Qt::KeyboardModifiers modifiers);
     static int windowLayer(CFDictionaryRef window);
     static QString windowTitle(CFDictionaryRef window);
-    static OSStatus hotkeyHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void* userData);
+    static OSStatus hotkeyHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData);
 };
 
 class AutoTypeExecutorMac : public AutoTypeExecutor
@@ -71,7 +73,6 @@ public:
 
     void execChar(AutoTypeChar* action) override;
     void execKey(AutoTypeKey* action) override;
-    void execClearField(AutoTypeClearField* action) override;
 
 private:
     AutoTypePlatformMac* const m_platform;

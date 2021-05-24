@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2013 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,46 +29,32 @@ class PasswordGenerator
 public:
     enum CharClass
     {
-        LowerLetters = (1 << 0),
-        UpperLetters = (1 << 1),
-        Numbers = (1 << 2),
-        Braces = (1 << 3),
-        Punctuation = (1 << 4),
-        Quotes = (1 << 5),
-        Dashes = (1 << 6),
-        Math = (1 << 7),
-        Logograms = (1 << 8),
-        SpecialCharacters = Braces | Punctuation | Quotes | Dashes | Math | Logograms,
-        EASCII = (1 << 9),
-        DefaultCharset = LowerLetters | UpperLetters | Numbers
+        LowerLetters      = 0x1,
+        UpperLetters      = 0x2,
+        Numbers           = 0x4,
+        SpecialCharacters = 0x8
     };
     Q_DECLARE_FLAGS(CharClasses, CharClass)
 
     enum GeneratorFlag
     {
-        ExcludeLookAlike = (1 << 0),
-        CharFromEveryGroup = (1 << 1),
-        AdvancedMode = (1 << 2),
-        DefaultFlags = ExcludeLookAlike | CharFromEveryGroup
+        ExcludeLookAlike   = 0x1,
+        CharFromEveryGroup = 0x2
     };
     Q_DECLARE_FLAGS(GeneratorFlags, GeneratorFlag)
 
 public:
     PasswordGenerator();
 
+    double calculateEntropy(QString password);
     void setLength(int length);
     void setCharClasses(const CharClasses& classes);
     void setFlags(const GeneratorFlags& flags);
-    void setAdditionalChars(const QString& chars);
-    void setExcludedChars(const QString& chars);
 
     bool isValid() const;
 
     QString generatePassword() const;
-
-    static const int DefaultLength = 32;
-    static const char* DefaultAdditionalChars;
-    static const char* DefaultExcludedChars;
+    int getbits() const;
 
 private:
     QVector<PasswordGroup> passwordGroups() const;
@@ -78,8 +63,6 @@ private:
     int m_length;
     CharClasses m_classes;
     GeneratorFlags m_flags;
-    QString m_additional;
-    QString m_excluded;
 
     Q_DISABLE_COPY(PasswordGenerator)
 };

@@ -33,13 +33,13 @@ public:
     void activate();
     void deactivate();
 
-signals:
+Q_SIGNALS:
     void inactivityDetected();
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event);
 
-private slots:
+private Q_SLOTS:
     void timeout();
 
 private:

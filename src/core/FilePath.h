@@ -27,9 +27,7 @@ class FilePath
 public:
     QString dataPath(const QString& name);
     QString pluginPath(const QString& name);
-    QString wordlistPath(const QString& name);
     QIcon applicationIcon();
-    QIcon trayIcon();
     QIcon trayIconLocked();
     QIcon trayIconUnlocked();
     QIcon icon(const QString& category, const QString& name, bool fromTheme = true);
@@ -40,7 +38,6 @@ public:
 private:
     FilePath();
     bool testSetDir(const QString& dir);
-    bool useDarkIcon();
 
     static FilePath* m_instance;
 
@@ -50,8 +47,7 @@ private:
     Q_DISABLE_COPY(FilePath)
 };
 
-inline FilePath* filePath()
-{
+inline FilePath* filePath() {
     return FilePath::instance();
 }
 

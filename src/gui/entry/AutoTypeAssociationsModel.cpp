@@ -17,12 +17,9 @@
 
 #include "AutoTypeAssociationsModel.h"
 
-#include "core/Entry.h"
-
 AutoTypeAssociationsModel::AutoTypeAssociationsModel(QObject* parent)
     : QAbstractListModel(parent)
     , m_autoTypeAssociations(nullptr)
-    , m_entry(nullptr)
 {
 }
 
@@ -49,16 +46,12 @@ void AutoTypeAssociationsModel::setAutoTypeAssociations(AutoTypeAssociations* au
     endResetModel();
 }
 
-void AutoTypeAssociationsModel::setEntry(Entry* entry)
-{
-    m_entry = entry;
-}
-
 int AutoTypeAssociationsModel::rowCount(const QModelIndex& parent) const
 {
     if (!m_autoTypeAssociations || parent.isValid()) {
         return 0;
-    } else {
+    }
+    else {
         return m_autoTypeAssociations->size();
     }
 }
@@ -75,10 +68,12 @@ QVariant AutoTypeAssociationsModel::headerData(int section, Qt::Orientation orie
     if ((orientation == Qt::Horizontal) && (role == Qt::DisplayRole)) {
         if (section == 0) {
             return tr("Window");
-        } else {
+        }
+        else {
             return tr("Sequence");
         }
-    } else {
+    }
+    else {
         return QVariant();
     }
 }
@@ -91,27 +86,24 @@ QVariant AutoTypeAssociationsModel::data(const QModelIndex& index, int role) con
 
     if (role == Qt::DisplayRole) {
         if (index.column() == 0) {
-            QString window = m_autoTypeAssociations->get(index.row()).window;
-            if (m_entry) {
-                window = m_entry->maskPasswordPlaceholders(window);
-                window = m_entry->resolveMultiplePlaceholders(window);
-            }
-            return window;
-        } else {
+            return m_autoTypeAssociations->get(index.row()).window;
+        }
+        else {
             QString sequence = m_autoTypeAssociations->get(index.row()).sequence;
             if (sequence.isEmpty()) {
                 sequence = tr("Default sequence");
             }
             return sequence;
         }
-    } else {
+    }
+    else {
         return QVariant();
     }
 }
 
 void AutoTypeAssociationsModel::associationChange(int i)
 {
-    emit dataChanged(index(i, 0), index(i, columnCount() - 1));
+    Q_EMIT dataChanged(index(i, 0), index(i, columnCount() - 1));
 }
 
 void AutoTypeAssociationsModel::associationAboutToAdd(int i)

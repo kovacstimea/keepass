@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2014 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,47 +18,33 @@
 #ifndef KEEPASSX_PASSWORDEDIT_H
 #define KEEPASSX_PASSWORDEDIT_H
 
-#include <QAction>
 #include <QLineEdit>
-#include <QPointer>
-
-class QDialog;
 
 class PasswordEdit : public QLineEdit
 {
     Q_OBJECT
 
 public:
+    static const QColor CorrectSoFarColor;
+    static const QColor ErrorColor;
+
     explicit PasswordEdit(QWidget* parent = nullptr);
-    void enablePasswordGenerator();
-    void setRepeatPartner(PasswordEdit* repeatEdit);
-    bool isPasswordVisible() const;
+    void enableVerifyMode(PasswordEdit* baseEdit);
 
-public slots:
+public Q_SLOTS:
     void setShowPassword(bool show);
-    void updateRepeatStatus();
 
-protected:
-    bool event(QEvent* event) override;
+Q_SIGNALS:
+    void showPasswordChanged(bool show);
 
-signals:
-    void capslockToggled(bool capslockOn);
-
-private slots:
-    void autocompletePassword(const QString& password);
-    void popupPasswordGenerator();
-    void setParentPasswordEdit(PasswordEdit* parent);
-    void checkCapslockState();
+private Q_SLOTS:
+    void updateStylesheet();
+    void autocompletePassword(QString password);
 
 private:
-    QPointer<QAction> m_errorAction;
-    QPointer<QAction> m_correctAction;
-    QPointer<QAction> m_toggleVisibleAction;
-    QPointer<QAction> m_passwordGeneratorAction;
-    QPointer<QAction> m_capslockAction;
-    QPointer<PasswordEdit> m_repeatPasswordEdit;
-    QPointer<PasswordEdit> m_parentPasswordEdit;
-    bool m_capslockState = false;
+    bool passwordsEqual() const;
+
+    PasswordEdit* m_basePasswordEdit;
 };
 
 #endif // KEEPASSX_PASSWORDEDIT_H

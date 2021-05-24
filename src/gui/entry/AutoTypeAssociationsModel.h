@@ -19,11 +19,10 @@
 #define KEEPASSX_AUTOTYPEASSOCIATIONSMODEL_H
 
 #include <QAbstractListModel>
-#include <QPointer>
 
 #include "core/AutoTypeAssociations.h"
 
-class Entry;
+class EntryAttributes;
 
 class AutoTypeAssociationsModel : public QAbstractListModel
 {
@@ -32,13 +31,12 @@ class AutoTypeAssociationsModel : public QAbstractListModel
 public:
     explicit AutoTypeAssociationsModel(QObject* parent = nullptr);
     void setAutoTypeAssociations(AutoTypeAssociations* autoTypeAssociations);
-    void setEntry(Entry* entry);
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     int columnCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
-public slots:
+public Q_SLOTS:
     void associationChange(int i);
     void associationAboutToAdd(int i);
     void associationAdd();
@@ -49,7 +47,6 @@ public slots:
 
 private:
     AutoTypeAssociations* m_autoTypeAssociations;
-    QPointer<const Entry> m_entry;
 };
 
 #endif // KEEPASSX_AUTOTYPEASSOCIATIONSMODEL_H

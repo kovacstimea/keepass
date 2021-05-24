@@ -55,13 +55,12 @@ void InactivityTimer::deactivate()
 bool InactivityTimer::eventFilter(QObject* watched, QEvent* event)
 {
     const QEvent::Type type = event->type();
-    // clang-format off
-    if ((type >= QEvent::MouseButtonPress && type <= QEvent::KeyRelease)
-        || (type >= QEvent::HoverEnter && type <= QEvent::HoverMove)
-        || (type == QEvent::Wheel)) {
+
+    if ( (type >= QEvent::MouseButtonPress && type <= QEvent::KeyRelease)
+         || (type >= QEvent::HoverEnter && type <= QEvent::HoverMove)
+         || (type == QEvent::Wheel) ) {
         m_timer->start();
     }
-    // clang-format on
 
     return QObject::eventFilter(watched, event);
 }
@@ -74,7 +73,7 @@ void InactivityTimer::timeout()
     }
 
     if (m_active && !m_timer->isActive()) {
-        emit inactivityDetected();
+        Q_EMIT inactivityDetected();
     }
 
     m_emitMutx.unlock();

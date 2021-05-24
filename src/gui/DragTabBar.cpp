@@ -42,7 +42,8 @@ void DragTabBar::dragEnterEvent(QDragEnterEvent* event)
             m_tabSwitchTimer->start(QApplication::doubleClickInterval() * 2);
         }
         event->setAccepted(true);
-    } else {
+    }
+    else {
         QTabBar::dragEnterEvent(event);
     }
 }
@@ -54,12 +55,14 @@ void DragTabBar::dragMoveEvent(QDragMoveEvent* event)
     if (tab != -1) {
         if (tab == currentIndex()) {
             m_tabSwitchTimer->stop();
-        } else if (tab != m_tabSwitchIndex) {
+        }
+        else if (tab != m_tabSwitchIndex) {
             m_tabSwitchIndex = tab;
             m_tabSwitchTimer->start(QApplication::doubleClickInterval() * 2);
         }
         event->setAccepted(true);
-    } else {
+    }
+    else {
         m_tabSwitchIndex = -1;
         m_tabSwitchTimer->stop();
         QTabBar::dragMoveEvent(event);

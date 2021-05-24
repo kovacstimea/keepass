@@ -20,18 +20,16 @@
 
 #include <QByteArray>
 
-#include "KeePass2.h"
 #include "crypto/SymmetricCipher.h"
 
 class KeePass2RandomStream
 {
 public:
-    KeePass2RandomStream(KeePass2::ProtectedStreamAlgo algo);
-
+    KeePass2RandomStream();
     bool init(const QByteArray& key);
     QByteArray randomBytes(int size, bool* ok);
     QByteArray process(const QByteArray& data, bool* ok);
-    Q_REQUIRED_RESULT bool processInPlace(QByteArray& data);
+    bool processInPlace(QByteArray& data) Q_REQUIRED_RESULT;
     QString errorString() const;
 
 private:
@@ -40,8 +38,6 @@ private:
     SymmetricCipher m_cipher;
     QByteArray m_buffer;
     int m_offset;
-
-    static SymmetricCipher::Algorithm mapAlgo(KeePass2::ProtectedStreamAlgo algo);
 };
 
 #endif // KEEPASSX_KEEPASS2RANDOMSTREAM_H

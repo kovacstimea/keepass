@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,12 +18,9 @@
 #ifndef KEEPASSX_AUTOTYPE_H
 #define KEEPASSX_AUTOTYPE_H
 
-#include <QMutex>
 #include <QObject>
 #include <QStringList>
 #include <QWidget>
-
-#include "core/AutoTypeMatch.h"
 
 class AutoTypeAction;
 class AutoTypeExecutor;
@@ -39,81 +35,53 @@ class AutoType : public QObject
 
 public:
     QStringList windowTitles();
+    void performAutoType(const Entry* entry, QWidget* hideWindow = nullptr,
+                         const QString& customSequence = QString(), WId window = 0);
     bool registerGlobalShortcut(Qt::Key key, Qt::KeyboardModifiers modifiers);
     void unregisterGlobalShortcut();
     int callEventFilter(void* event);
-    static bool checkSyntax(const QString& string);
-    static bool checkHighRepetition(const QString& string);
-    static bool checkSlowKeypress(const QString& string);
-    static bool checkHighDelay(const QString& string);
-    static bool verifyAutoTypeSyntax(const QString& sequence);
-    void performAutoType(const Entry* entry, QWidget* hideWindow = nullptr);
 
-    inline bool isAvailable()
-    {
+    inline bool isAvailable() {
         return m_plugin;
     }
 
     static AutoType* instance();
     static void createTestInstance();
 
-public slots:
-    void performGlobalAutoType(const QList<QSharedPointer<Database>>& dbList);
-    void raiseWindow();
+public Q_SLOTS:
+    void performGlobalAutoType(const QList<Database*>& dbList);
 
-signals:
-    void globalAutoTypeTriggered();
-    void autotypePerformed();
-    void autotypeRejected();
+Q_SIGNALS:
+    void globalShortcutTriggered();
 
-private slots:
-    void startGlobalAutoType();
-    void performAutoTypeFromGlobal(AutoTypeMatch match);
-    void autoTypeRejectedFromGlobal();
+private Q_SLOTS:
+    void performAutoTypeFromGlobal(Entry* entry, const QString& sequence);
+    void resetInAutoType();
     void unloadPlugin();
 
 private:
-    enum WindowState
-    {
-        Normal,
-        Minimized,
-        Hidden
-    };
-
     explicit AutoType(QObject* parent = nullptr, bool test = false);
-    ~AutoType() override;
+    ~AutoType();
     void loadPlugin(const QString& pluginPath);
-    void executeAutoTypeActions(const Entry* entry,
-                                QWidget* hideWindow = nullptr,
-                                const QString& customSequence = QString(),
-                                WId window = 0);
     bool parseActions(const QString& sequence, const Entry* entry, QList<AutoTypeAction*>& actions);
     QList<AutoTypeAction*> createActionFromTemplate(const QString& tmpl, const Entry* entry);
-    QList<QString> autoTypeSequences(const Entry* entry, const QString& windowTitle = QString());
-    bool windowMatchesTitle(const QString& windowTitle, const QString& resolvedTitle);
-    bool windowMatchesUrl(const QString& windowTitle, const QString& resolvedUrl);
+    QString autoTypeSequence(const Entry* entry, const QString& windowTitle = QString());
     bool windowMatches(const QString& windowTitle, const QString& windowPattern);
-    void restoreWindowState();
 
-    QMutex m_inAutoType;
-    QMutex m_inGlobalAutoTypeDialog;
+    bool m_inAutoType;
     int m_autoTypeDelay;
     Qt::Key m_currentGlobalKey;
     Qt::KeyboardModifiers m_currentGlobalModifiers;
     QPluginLoader* m_pluginLoader;
     AutoTypePlatformInterface* m_plugin;
     AutoTypeExecutor* m_executor;
+    WId m_windowFromGlobal;
     static AutoType* m_instance;
-
-    QString m_windowTitleForGlobal;
-    WindowState m_windowState;
-    WId m_windowForGlobal;
 
     Q_DISABLE_COPY(AutoType)
 };
 
-inline AutoType* autoType()
-{
+inline AutoType* autoType() {
     return AutoType::instance();
 }
 

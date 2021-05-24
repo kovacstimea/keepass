@@ -22,7 +22,7 @@
 #include <QStyle>
 #include <QToolButton>
 
-#include "core/Resources.h"
+#include "core/FilePath.h"
 
 LineEdit::LineEdit(QWidget* parent)
     : QLineEdit(parent)
@@ -30,10 +30,16 @@ LineEdit::LineEdit(QWidget* parent)
 {
     m_clearButton->setObjectName("clearButton");
 
-    QString iconNameDirected =
-        QString("edit-clear-locationbar-").append((layoutDirection() == Qt::LeftToRight) ? "rtl" : "ltr");
-
-    const auto icon = resources()->icon(iconNameDirected);
+    QIcon icon;
+    QString iconNameDirected = QString("edit-clear-locationbar-").append(
+                (layoutDirection() == Qt::LeftToRight) ? "rtl" : "ltr");
+    icon = QIcon::fromTheme(iconNameDirected);
+    if (icon.isNull()) {
+        icon = QIcon::fromTheme("edit-clear");
+        if (icon.isNull()) {
+            icon = filePath()->icon("actions", iconNameDirected, false);
+        }
+    }
 
     m_clearButton->setIcon(icon);
     m_clearButton->setCursor(Qt::ArrowCursor);
@@ -42,8 +48,8 @@ LineEdit::LineEdit(QWidget* parent)
     connect(m_clearButton, SIGNAL(clicked()), this, SLOT(clear()));
     connect(this, SIGNAL(textChanged(QString)), this, SLOT(updateCloseButton(QString)));
     int frameWidth = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
-    setStyleSheet(
-        QString("QLineEdit { padding-right: %1px; } ").arg(m_clearButton->sizeHint().width() + frameWidth + 1));
+    setStyleSheet(QString("QLineEdit { padding-right: %1px; } ")
+                  .arg(m_clearButton->sizeHint().width() + frameWidth + 1));
     QSize msz = minimumSizeHint();
     setMinimumSize(qMax(msz.width(), m_clearButton->sizeHint().height() + frameWidth * 2 + 2),
                    qMax(msz.height(), m_clearButton->sizeHint().height() + frameWidth * 2 + 2));
@@ -57,7 +63,8 @@ void LineEdit::resizeEvent(QResizeEvent* event)
 
     if (layoutDirection() == Qt::LeftToRight) {
         m_clearButton->move(rect().right() - frameWidth - sz.width(), y);
-    } else {
+    }
+    else {
         m_clearButton->move(rect().left() + frameWidth, y);
     }
 

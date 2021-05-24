@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
+ *  Copyright (C) 2010 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,148 +15,184 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "KeePass2Writer.h"
+
+#include <QBuffer>
 #include <QFile>
 #include <QIODevice>
 
 #include "core/Database.h"
-#include "core/Group.h"
-#include "core/Metadata.h"
-#include "crypto/kdf/AesKdf.h"
-#include "format/Kdbx3Writer.h"
-#include "format/Kdbx4Writer.h"
-#include "format/KeePass2Writer.h"
+#include "core/Endian.h"
+#include "crypto/CryptoHash.h"
+#include "crypto/Random.h"
+#include "format/KeePass2RandomStream.h"
+#include "format/KeePass2XmlWriter.h"
+#include "streams/HashedBlockStream.h"
+#include "streams/QtIOCompressor"
+#include "streams/SymmetricCipherStream.h"
 
-/**
- * Write a database to a KDBX file.
- *
- * @param filename output filename
- * @param db source database
- * @return true on success
- */
-bool KeePass2Writer::writeDatabase(const QString& filename, Database* db)
+#define CHECK_RETURN(x) if (!(x)) return;
+#define CHECK_RETURN_FALSE(x) if (!(x)) return false;
+
+KeePass2Writer::KeePass2Writer()
+    : m_device(0)
+    , m_error(false)
 {
-    QFile file(filename);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        raiseError(file.errorString());
-        return false;
-    }
-    return writeDatabase(&file, db);
 }
 
-/**
- * @return true if the database should upgrade to KDBX4.
- */
-bool KeePass2Writer::implicitUpgradeNeeded(Database const* db) const
+void KeePass2Writer::writeDatabase(QIODevice* device, Database* db)
 {
-    if (db->kdf()->uuid() != KeePass2::KDF_AES_KDBX3) {
-        return false;
+    m_error = false;
+    m_errorStr.clear();
+
+    QByteArray masterSeed = randomGen()->randomArray(32);
+    QByteArray encryptionIV = randomGen()->randomArray(16);
+    QByteArray protectedStreamKey = randomGen()->randomArray(32);
+    QByteArray startBytes = randomGen()->randomArray(32);
+    QByteArray endOfHeader = "\r\n\r\n";
+
+    CryptoHash hash(CryptoHash::Sha256);
+    hash.addData(masterSeed);
+    Q_ASSERT(!db->transformedMasterKey().isEmpty());
+    hash.addData(db->transformedMasterKey());
+    QByteArray finalKey = hash.result();
+
+    QBuffer header;
+    header.open(QIODevice::WriteOnly);
+    m_device = &header;
+
+    CHECK_RETURN(writeData(Endian::int32ToBytes(KeePass2::SIGNATURE_1, KeePass2::BYTEORDER)));
+    CHECK_RETURN(writeData(Endian::int32ToBytes(KeePass2::SIGNATURE_2, KeePass2::BYTEORDER)));
+    CHECK_RETURN(writeData(Endian::int32ToBytes(KeePass2::FILE_VERSION, KeePass2::BYTEORDER)));
+
+    CHECK_RETURN(writeHeaderField(KeePass2::CipherID, db->cipher().toByteArray()));
+    CHECK_RETURN(writeHeaderField(KeePass2::CompressionFlags,
+                                  Endian::int32ToBytes(db->compressionAlgo(),
+                                                       KeePass2::BYTEORDER)));
+    CHECK_RETURN(writeHeaderField(KeePass2::MasterSeed, masterSeed));
+    CHECK_RETURN(writeHeaderField(KeePass2::TransformSeed, db->transformSeed()));
+    CHECK_RETURN(writeHeaderField(KeePass2::TransformRounds,
+                                  Endian::int64ToBytes(db->transformRounds(),
+                                                       KeePass2::BYTEORDER)));
+    CHECK_RETURN(writeHeaderField(KeePass2::EncryptionIV, encryptionIV));
+    CHECK_RETURN(writeHeaderField(KeePass2::ProtectedStreamKey, protectedStreamKey));
+    CHECK_RETURN(writeHeaderField(KeePass2::StreamStartBytes, startBytes));
+    CHECK_RETURN(writeHeaderField(KeePass2::InnerRandomStreamID,
+                                  Endian::int32ToBytes(KeePass2::Salsa20,
+                                                       KeePass2::BYTEORDER)));
+    CHECK_RETURN(writeHeaderField(KeePass2::EndOfHeader, endOfHeader));
+
+    header.close();
+    m_device = device;
+    QByteArray headerHash = CryptoHash::hash(header.data(), CryptoHash::Sha256);
+    CHECK_RETURN(writeData(header.data()));
+
+    SymmetricCipherStream cipherStream(device, SymmetricCipher::Aes256, SymmetricCipher::Cbc,
+                                       SymmetricCipher::Encrypt);
+    cipherStream.init(finalKey, encryptionIV);
+    if (!cipherStream.open(QIODevice::WriteOnly)) {
+        raiseError(cipherStream.errorString());
+        return;
+    }
+    m_device = &cipherStream;
+    CHECK_RETURN(writeData(startBytes));
+
+    HashedBlockStream hashedStream(&cipherStream);
+    if (!hashedStream.open(QIODevice::WriteOnly)) {
+        raiseError(hashedStream.errorString());
+        return;
     }
 
-    if (!db->publicCustomData().isEmpty()) {
+    QScopedPointer<QtIOCompressor> ioCompressor;
+
+    if (db->compressionAlgo() == Database::CompressionNone) {
+        m_device = &hashedStream;
+    }
+    else {
+        ioCompressor.reset(new QtIOCompressor(&hashedStream));
+        ioCompressor->setStreamFormat(QtIOCompressor::GzipFormat);
+        if (!ioCompressor->open(QIODevice::WriteOnly)) {
+            raiseError(ioCompressor->errorString());
+            return;
+        }
+        m_device = ioCompressor.data();
+    }
+
+    KeePass2RandomStream randomStream;
+    if (!randomStream.init(protectedStreamKey)) {
+        raiseError(randomStream.errorString());
+        return;
+    }
+
+    KeePass2XmlWriter xmlWriter;
+    xmlWriter.writeDatabase(m_device, db, &randomStream, headerHash);
+
+    // Explicitly close/reset streams so they are flushed and we can detect
+    // errors. QIODevice::close() resets errorString() etc.
+    if (ioCompressor) {
+        ioCompressor->close();
+    }
+    if (!hashedStream.reset()) {
+        raiseError(hashedStream.errorString());
+        return;
+    }
+    if (!cipherStream.reset()) {
+        raiseError(cipherStream.errorString());
+        return;
+    }
+
+    if (xmlWriter.hasError()) {
+        raiseError(xmlWriter.errorString());
+    }
+}
+
+bool KeePass2Writer::writeData(const QByteArray& data)
+{
+    if (m_device->write(data) != data.size()) {
+        raiseError(m_device->errorString());
+        return false;
+    }
+    else {
         return true;
     }
-
-    for (const auto& group : db->rootGroup()->groupsRecursive(true)) {
-        if (group->customData() && !group->customData()->isEmpty()) {
-            return true;
-        }
-
-        for (const auto& entry : group->entries()) {
-            if (entry->customData() && !entry->customData()->isEmpty()) {
-                return true;
-            }
-
-            for (const auto& historyItem : entry->historyItems()) {
-                if (historyItem->customData() && !historyItem->customData()->isEmpty()) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
 }
 
-/**
- * Write a database to a device in KDBX format.
- *
- * @param device output device
- * @param db source database
- * @return true on success
- */
-bool KeePass2Writer::writeDatabase(QIODevice* device, Database* db)
+bool KeePass2Writer::writeHeaderField(KeePass2::HeaderFieldID fieldId, const QByteArray& data)
 {
-    m_error = false;
-    m_errorStr.clear();
+    Q_ASSERT(data.size() <= 65535);
 
-    bool upgradeNeeded = implicitUpgradeNeeded(db);
-    if (upgradeNeeded) {
-        // We MUST re-transform the key, because challenge-response hashing has changed in KDBX 4.
-        // If we forget to re-transform, the database will be saved WITHOUT a challenge-response key component!
-        db->changeKdf(KeePass2::uuidToKdf(KeePass2::KDF_AES_KDBX4));
-    }
+    QByteArray fieldIdArr;
+    fieldIdArr[0] = fieldId;
+    CHECK_RETURN_FALSE(writeData(fieldIdArr));
+    CHECK_RETURN_FALSE(writeData(Endian::int16ToBytes(static_cast<quint16>(data.size()),
+                                                      KeePass2::BYTEORDER)));
+    CHECK_RETURN_FALSE(writeData(data));
 
-    if (db->kdf()->uuid() == KeePass2::KDF_AES_KDBX3) {
-        Q_ASSERT(!upgradeNeeded);
-        m_version = KeePass2::FILE_VERSION_3_1;
-        m_writer.reset(new Kdbx3Writer());
-    } else {
-        m_version = KeePass2::FILE_VERSION_4;
-        m_writer.reset(new Kdbx4Writer());
-    }
-
-    return m_writer->writeDatabase(device, db);
+    return true;
 }
 
-void KeePass2Writer::extractDatabase(Database* db, QByteArray& xmlOutput)
+void KeePass2Writer::writeDatabase(const QString& filename, Database* db)
 {
-    m_error = false;
-    m_errorStr.clear();
-
-    if (db->kdf()->uuid() == KeePass2::KDF_AES_KDBX3) {
-        m_version = KeePass2::FILE_VERSION_3_1;
-        m_writer.reset(new Kdbx3Writer());
-    } else {
-        m_version = KeePass2::FILE_VERSION_4;
-        m_writer.reset(new Kdbx4Writer());
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly|QIODevice::Truncate)) {
+        raiseError(file.errorString());
+        return;
     }
-
-    m_writer->extractDatabase(xmlOutput, db);
+    writeDatabase(&file, db);
 }
 
-bool KeePass2Writer::hasError() const
+bool KeePass2Writer::hasError()
 {
-    return m_error || (m_writer && m_writer->hasError());
+    return m_error;
 }
 
-QString KeePass2Writer::errorString() const
+QString KeePass2Writer::errorString()
 {
-    return m_writer ? m_writer->errorString() : m_errorStr;
+    return m_errorStr;
 }
 
-/**
- * Raise an error. Use in case of an unexpected write error.
- *
- * @param errorMessage error message
- */
 void KeePass2Writer::raiseError(const QString& errorMessage)
 {
     m_error = true;
     m_errorStr = errorMessage;
-}
-
-/**
- * @return KDBX writer used for writing the output file
- */
-QSharedPointer<KdbxWriter> KeePass2Writer::writer() const
-{
-    return QSharedPointer<KdbxWriter>();
-}
-
-/**
- * @return KDBX version used for writing the output file
- */
-quint32 KeePass2Writer::version() const
-{
-    return m_version;
 }

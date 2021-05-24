@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,45 +18,29 @@
 #ifndef KEEPASSX_EDITWIDGETICONS_H
 #define KEEPASSX_EDITWIDGETICONS_H
 
-#include <QMenu>
-#include <QUrl>
-#include <QUuid>
 #include <QWidget>
+#include <QSet>
 
-#include "config-keepassx.h"
-#include "core/Entry.h"
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+
 #include "core/Global.h"
-#include "gui/MessageWidget.h"
+#include "core/Uuid.h"
 
 class Database;
 class DefaultIconModel;
 class CustomIconModel;
-#ifdef WITH_XC_NETWORKING
-class IconDownloader;
-#endif
 
-namespace Ui
-{
+namespace Ui {
     class EditWidgetIcons;
 }
-
-enum ApplyIconToOptions
-{
-    THIS_ONLY = 0b00,
-    CHILD_GROUPS = 0b10,
-    CHILD_ENTRIES = 0b01,
-    ALL_CHILDREN = 0b11
-};
-
-Q_DECLARE_METATYPE(ApplyIconToOptions)
 
 struct IconStruct
 {
     IconStruct();
 
-    QUuid uuid;
+    Uuid uuid;
     int number;
-    ApplyIconToOptions applyTo;
 };
 
 class EditWidgetIcons : public QWidget
@@ -70,46 +53,36 @@ public:
 
     IconStruct state();
     void reset();
-    void load(const QUuid& currentUuid,
-              const QSharedPointer<Database>& database,
-              const IconStruct& iconStruct,
-              const QString& url = "");
-    void setShowApplyIconToButton(bool state);
+    void load(Uuid currentUuid, Database* database, IconStruct iconStruct, const QString &url = QString());
 
-public slots:
-    void setUrl(const QString& url);
-    void abortRequests();
+public Q_SLOTS:
+    void setUrl(const QString &url);
 
-signals:
-    void messageEditEntry(QString, MessageWidget::MessageType);
-    void messageEditEntryDismiss();
-    void widgetUpdated();
-
-private slots:
+private Q_SLOTS:
     void downloadFavicon();
-    void iconReceived(const QString& url, const QImage& icon);
-    void addCustomIconFromFile();
-    bool addCustomIcon(const QImage& icon);
+    void fetchFavicon(QUrl url);
+    void fetchFaviconFromGoogle(QString domain);
+    void abortFaviconDownload(bool clearRedirect = true);
+    void onRequestFinished(QNetworkReply *reply);
+    void addCustomIcon();
     void removeCustomIcon();
     void updateWidgetsDefaultIcons(bool checked);
     void updateWidgetsCustomIcons(bool checked);
     void updateRadioButtonDefaultIcons();
     void updateRadioButtonCustomIcons();
-    void confirmApplyIconTo(QAction* action);
 
 private:
-    QMenu* createApplyIconToMenu();
-
     const QScopedPointer<Ui::EditWidgetIcons> m_ui;
-    QSharedPointer<Database> m_db;
-    QUuid m_currentUuid;
-    ApplyIconToOptions m_applyIconTo;
+    Database* m_database;
+    Uuid m_currentUuid;
+    QString m_url;
+    QUrl m_redirectUrl;
+    bool m_fallbackToGoogle = true;
+    unsigned short m_redirectCount = 0;
     DefaultIconModel* const m_defaultIconModel;
     CustomIconModel* const m_customIconModel;
-#ifdef WITH_XC_NETWORKING
-    QScopedPointer<IconDownloader> m_downloader;
-    QString m_url;
-#endif
+    QNetworkAccessManager* const m_networkAccessMngr;
+    QNetworkReply* m_networkOperation;
 
     Q_DISABLE_COPY(EditWidgetIcons)
 };

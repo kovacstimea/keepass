@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2016 Lennart Glauer <mail@lennart-glauer.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +21,8 @@
 #include <QtPlugin>
 #include <Windows.h>
 
-#include "autotype/AutoTypeAction.h"
 #include "autotype/AutoTypePlatformPlugin.h"
+#include "autotype/AutoTypeAction.h"
 
 class AutoTypePlatformWin : public QObject, public AutoTypePlatformInterface
 {
@@ -39,13 +38,14 @@ public:
     bool registerGlobalShortcut(Qt::Key key, Qt::KeyboardModifiers modifiers) override;
     void unregisterGlobalShortcut(Qt::Key key, Qt::KeyboardModifiers modifiers) override;
     int platformEventFilter(void* event) override;
+    int initialTimeout() override;
     bool raiseWindow(WId window) override;
     AutoTypeExecutor* createExecutor() override;
 
     void sendChar(const QChar& ch, bool isKeyDown);
     void sendKey(Qt::Key key, bool isKeyDown);
 
-signals:
+Q_SIGNALS:
     void globalShortcutTriggered();
 
 private:
@@ -64,10 +64,10 @@ public:
 
     void execChar(AutoTypeChar* action) override;
     void execKey(AutoTypeKey* action) override;
-    void execClearField(AutoTypeClearField* action) override;
 
 private:
     AutoTypePlatformWin* const m_platform;
 };
 
 #endif // KEEPASSX_AUTOTYPEWINDOWS_H
+

@@ -1,5 +1,4 @@
 /*
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -20,55 +19,32 @@
 
 #include <QApplication>
 #include <QClipboard>
-#include <QMimeData>
 #include <QTimer>
 
 #include "core/Config.h"
 
 Clipboard* Clipboard::m_instance(nullptr);
-#ifdef Q_OS_MACOS
-QPointer<MacPasteboard> Clipboard::m_pasteboard(nullptr);
-#endif
 
 Clipboard::Clipboard(QObject* parent)
     : QObject(parent)
     , m_timer(new QTimer(this))
 {
-#ifdef Q_OS_MACOS
-    if (!m_pasteboard) {
-        m_pasteboard = new MacPasteboard();
-    }
-#endif
     m_timer->setSingleShot(true);
     connect(m_timer, SIGNAL(timeout()), SLOT(clearClipboard()));
     connect(qApp, SIGNAL(aboutToQuit()), SLOT(clearCopiedText()));
 }
 
-void Clipboard::setText(const QString& text, bool clear)
+void Clipboard::setText(const QString& text)
 {
-    auto* clipboard = QApplication::clipboard();
-    if (!clipboard) {
-        qWarning("Unable to access the clipboard.");
-        return;
-    }
+    QClipboard* clipboard = QApplication::clipboard();
 
-    auto* mime = new QMimeData;
-#ifdef Q_OS_MACOS
-    mime->setText(text);
-    mime->setData("application/x-nspasteboard-concealed-type", text.toUtf8());
-    clipboard->setMimeData(mime, QClipboard::Clipboard);
-#else
-    mime->setText(text);
-    mime->setData("x-kde-passwordManagerHint", QByteArrayLiteral("secret"));
-    clipboard->setMimeData(mime, QClipboard::Clipboard);
-
+    clipboard->setText(text, QClipboard::Clipboard);
     if (clipboard->supportsSelection()) {
-        clipboard->setMimeData(mime, QClipboard::Selection);
+        clipboard->setText(text, QClipboard::Selection);
     }
-#endif
 
-    if (clear && config()->get(Config::Security_ClearClipboard).toBool()) {
-        int timeout = config()->get(Config::Security_ClearClipboardTimeout).toInt();
+    if (config()->get("security/clearclipboard").toBool()) {
+        int timeout = config()->get("security/clearclipboardtimeout").toInt();
         if (timeout > 0) {
             m_lastCopied = text;
             m_timer->start(timeout * 1000);
@@ -86,15 +62,20 @@ void Clipboard::clearCopiedText()
 
 void Clipboard::clearClipboard()
 {
-    auto* clipboard = QApplication::clipboard();
+    QClipboard* clipboard = QApplication::clipboard();
+
     if (!clipboard) {
         qWarning("Unable to access the clipboard.");
         return;
     }
 
-    if (m_lastCopied == clipboard->text(QClipboard::Clipboard)
-        || m_lastCopied == clipboard->text(QClipboard::Selection)) {
-        setText("", false);
+    if (clipboard->text(QClipboard::Clipboard) == m_lastCopied) {
+        clipboard->clear(QClipboard::Clipboard);
+    }
+
+    if (clipboard->supportsSelection()
+            && (clipboard->text(QClipboard::Selection) == m_lastCopied)) {
+        clipboard->clear(QClipboard::Selection);
     }
 
     m_lastCopied.clear();

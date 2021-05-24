@@ -41,17 +41,15 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     Qt::DropActions supportedDropActions() const override;
     Qt::ItemFlags flags(const QModelIndex& modelIndex) const override;
-    bool
-    dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) override;
+    bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column,
+                      const QModelIndex& parent) override;
     QStringList mimeTypes() const override;
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
-    void sortChildren(Group* rootGroup, bool reverse = false);
 
 private:
     QModelIndex parent(Group* group) const;
-    void collectIndexesRecursively(QList<QModelIndex>& indexes, QList<Group*> groups);
 
-private slots:
+private Q_SLOTS:
     void groupDataChanged(Group* group);
     void groupAboutToRemove(Group* group);
     void groupRemoved();

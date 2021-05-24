@@ -19,9 +19,6 @@
 #define KEEPASSX_TIMEINFO_H
 
 #include <QDateTime>
-#include <QFlag>
-
-#include "core/Compare.h"
 
 class TimeInfo
 {
@@ -35,10 +32,6 @@ public:
     bool expires() const;
     int usageCount() const;
     QDateTime locationChanged() const;
-
-    bool operator==(const TimeInfo& other) const;
-    bool operator!=(const TimeInfo& other) const;
-    bool equals(const TimeInfo& other, CompareItemOptions options = CompareItemDefault) const;
 
     void setLastModificationTime(const QDateTime& dateTime);
     void setCreationTime(const QDateTime& dateTime);

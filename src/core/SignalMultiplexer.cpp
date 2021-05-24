@@ -131,7 +131,8 @@ void SignalMultiplexer::connect(const Connection& con)
 
     if (con.sender) {
         QObject::connect(con.sender, con.signal, m_currentObject, con.slot);
-    } else {
+    }
+    else {
         QObject::connect(m_currentObject, con.signal, con.receiver, con.slot);
     }
 }
@@ -142,7 +143,8 @@ void SignalMultiplexer::disconnect(const Connection& con)
 
     if (con.sender) {
         QObject::disconnect(con.sender, con.signal, m_currentObject, con.slot);
-    } else {
+    }
+    else {
         QObject::disconnect(m_currentObject, con.signal, con.receiver, con.slot);
     }
 }

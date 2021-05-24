@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>465</width>
+    <width>630</width>
     <height>34</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="leftMargin">
@@ -24,45 +30,54 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QLineEdit" name="searchEdit">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+    <widget class="QToolButton" name="searchIcon">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
      </property>
-     <property name="minimumSize">
-      <size>
-       <width>150</width>
-       <height>0</height>
-      </size>
+     <property name="text">
+      <string>Search</string>
+     </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonIconOnly</enum>
+     </property>
+     <property name="autoRaise">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="searchEdit">
+     <property name="styleSheet">
+      <string notr="true">padding:3px</string>
      </property>
      <property name="placeholderText">
-      <string/>
+      <string>Find</string>
      </property>
      <property name="clearButtonEnabled">
       <bool>false</bool>
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="QToolButton" name="clearIcon">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
+     <property name="text">
+      <string>Clear</string>
+     </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonIconOnly</enum>
+     </property>
+     <property name="autoRaise">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
   </layout>
-  <action name="searchIcon">
-   <property name="text">
-    <string>Search</string>
-   </property>
-  </action>
-  <action name="clearIcon">
-   <property name="text">
-    <string>Clear</string>
-   </property>
-  </action>
-  <action name="helpIcon">
-   <property name="text">
-    <string>Search Help</string>
-   </property>
-  </action>
  </widget>
  <tabstops>
+  <tabstop>searchIcon</tabstop>
   <tabstop>searchEdit</tabstop>
  </tabstops>
  <resources/>

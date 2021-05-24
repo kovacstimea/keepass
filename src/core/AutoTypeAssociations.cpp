@@ -27,6 +27,7 @@ bool AutoTypeAssociations::Association::operator!=(const AutoTypeAssociations::A
     return window != other.window || sequence != other.sequence;
 }
 
+
 AutoTypeAssociations::AutoTypeAssociations(QObject* parent)
     : QObject(parent)
 {
@@ -38,29 +39,29 @@ void AutoTypeAssociations::copyDataFrom(const AutoTypeAssociations* other)
         return;
     }
 
-    emit aboutToReset();
+    Q_EMIT aboutToReset();
     m_associations = other->m_associations;
-    emit reset();
-    emit modified();
+    Q_EMIT reset();
+    Q_EMIT modified();
 }
 
 void AutoTypeAssociations::add(const AutoTypeAssociations::Association& association)
 {
     int index = m_associations.size();
-    emit aboutToAdd(index);
+    Q_EMIT aboutToAdd(index);
     m_associations.append(association);
-    emit added(index);
-    emit modified();
+    Q_EMIT added(index);
+    Q_EMIT modified();
 }
 
 void AutoTypeAssociations::remove(int index)
 {
     Q_ASSERT(index >= 0 && index < m_associations.size());
 
-    emit aboutToRemove(index);
+    Q_EMIT aboutToRemove(index);
     m_associations.removeAt(index);
-    emit removed(index);
-    emit modified();
+    Q_EMIT removed(index);
+    Q_EMIT modified();
 }
 
 void AutoTypeAssociations::removeEmpty()
@@ -80,8 +81,8 @@ void AutoTypeAssociations::update(int index, const AutoTypeAssociations::Associa
 
     if (m_associations.at(index) != association) {
         m_associations[index] = association;
-        emit dataChanged(index);
-        emit modified();
+        Q_EMIT dataChanged(index);
+        Q_EMIT modified();
     }
 }
 
@@ -102,34 +103,7 @@ int AutoTypeAssociations::size() const
     return m_associations.size();
 }
 
-int AutoTypeAssociations::associationsSize() const
-{
-    int size = 0;
-    for (const Association& association : m_associations) {
-        size += association.sequence.toUtf8().size() + association.window.toUtf8().size();
-    }
-    return size;
-}
-
 void AutoTypeAssociations::clear()
 {
     m_associations.clear();
-}
-
-bool AutoTypeAssociations::operator==(const AutoTypeAssociations& other) const
-{
-    if (m_associations.count() != other.m_associations.count()) {
-        return false;
-    }
-    for (int i = 0; i < m_associations.count(); ++i) {
-        if (m_associations[i] != other.m_associations[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool AutoTypeAssociations::operator!=(const AutoTypeAssociations& other) const
-{
-    return !(*this == other);
 }

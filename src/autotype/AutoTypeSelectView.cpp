@@ -17,16 +17,18 @@
 
 #include "AutoTypeSelectView.h"
 
-#include <QKeyEvent>
 #include <QMouseEvent>
 
 AutoTypeSelectView::AutoTypeSelectView(QWidget* parent)
-    : AutoTypeMatchView(parent)
+    : EntryView(parent)
 {
+    hideColumn(3);
     setMouseTracking(true);
     setAllColumnsShowFocus(true);
+    setDragEnabled(false);
+    setSelectionMode(QAbstractItemView::SingleSelection);
 
-    connect(model(), SIGNAL(modelReset()), SLOT(selectFirstMatch()));
+    connect(model(), SIGNAL(modelReset()), SLOT(selectFirstEntry()));
 }
 
 void AutoTypeSelectView::mouseMoveEvent(QMouseEvent* event)
@@ -36,27 +38,19 @@ void AutoTypeSelectView::mouseMoveEvent(QMouseEvent* event)
     if (index.isValid()) {
         setCurrentIndex(index);
         setCursor(Qt::PointingHandCursor);
-    } else {
+    }
+    else {
         unsetCursor();
     }
 
-    AutoTypeMatchView::mouseMoveEvent(event);
+    EntryView::mouseMoveEvent(event);
 }
 
-void AutoTypeSelectView::selectFirstMatch()
+void AutoTypeSelectView::selectFirstEntry()
 {
     QModelIndex index = model()->index(0, 0);
 
     if (index.isValid()) {
         setCurrentIndex(index);
-    }
-}
-
-void AutoTypeSelectView::keyReleaseEvent(QKeyEvent* e)
-{
-    if (e->key() == Qt::Key_Escape) {
-        emit rejected();
-    } else {
-        e->ignore();
     }
 }

@@ -22,10 +22,8 @@
 #include <QDialog>
 #include <QHash>
 
-#include "autotype/AutoTypeFilterLineEdit.h"
-#include "core/AutoTypeMatch.h"
-
 class AutoTypeSelectView;
+class Entry;
 
 class AutoTypeSelectDialog : public QDialog
 {
@@ -33,28 +31,22 @@ class AutoTypeSelectDialog : public QDialog
 
 public:
     explicit AutoTypeSelectDialog(QWidget* parent = nullptr);
-    void setMatchList(const QList<AutoTypeMatch>& matchList);
+    void setEntries(const QList<Entry*>& entries, const QHash<Entry*, QString>& sequences);
 
-signals:
-    void matchActivated(AutoTypeMatch match);
+Q_SIGNALS:
+    void entryActivated(Entry* entry, const QString& sequence);
 
-public slots:
+public Q_SLOTS:
     void done(int r) override;
-    void reject() override;
 
-private slots:
-    void emitMatchActivated(const QModelIndex& index);
-    void matchRemoved();
-    void filterList(QString filterString);
-    void moveSelectionUp();
-    void moveSelectionDown();
-    void activateCurrentIndex();
+private Q_SLOTS:
+    void emitEntryActivated(const QModelIndex& index);
+    void entryRemoved();
 
 private:
     AutoTypeSelectView* const m_view;
-    AutoTypeFilterLineEdit* const m_filterLineEdit;
-    bool m_matchActivatedEmitted;
-    bool m_rejected;
+    QHash<Entry*, QString> m_sequences;
+    bool m_entryActivatedEmitted;
 };
 
 #endif // KEEPASSX_AUTOTYPESELECTDIALOG_H

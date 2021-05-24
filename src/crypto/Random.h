@@ -20,13 +20,12 @@
 
 #include <QByteArray>
 #include <QScopedPointer>
-#include <QSharedPointer>
 
 class RandomBackend
 {
 public:
     virtual void randomize(void* data, int len) = 0;
-    virtual ~RandomBackend();
+    virtual ~RandomBackend() {}
 };
 
 class Random
@@ -46,23 +45,18 @@ public:
     quint32 randomUIntRange(quint32 min, quint32 max);
 
     static Random* instance();
-
-protected:
-    static void resetInstance();
-    static void setInstance(RandomBackend* backend);
+    static void createWithBackend(RandomBackend* backend);
 
 private:
-    static QSharedPointer<Random> m_instance;
-
     explicit Random(RandomBackend* backend);
 
     QScopedPointer<RandomBackend> m_backend;
+    static Random* m_instance;
 
     Q_DISABLE_COPY(Random)
 };
 
-inline Random* randomGen()
-{
+inline Random* randomGen() {
     return Random::instance();
 }
 

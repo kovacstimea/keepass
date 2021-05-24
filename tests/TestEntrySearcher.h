@@ -15,6 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #ifndef KEEPASSX_TESTENTRYSEARCHER_H
 #define KEEPASSX_TESTENTRYSEARCHER_H
 
@@ -27,20 +28,16 @@ class TestEntrySearcher : public QObject
 {
     Q_OBJECT
 
-private slots:
-    void init();
-    void cleanup();
+private Q_SLOTS:
+    void initTestCase();
+    void cleanupTestCase();
 
     void testAndConcatenationInSearch();
     void testSearch();
     void testAllAttributesAreSearched();
-    void testSearchTermParser();
-    void testCustomAttributesAreSearched();
-    void testGroup();
-    void testSkipProtected();
 
 private:
-    Group* m_rootGroup;
+    Group* m_groupRoot;
     EntrySearcher m_entrySearcher;
     QList<Entry*> m_searchResult;
 };

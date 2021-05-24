@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2012 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,21 +17,13 @@
 
 #include "EntryAttributes.h"
 
-#include "core/Global.h"
-
 const QString EntryAttributes::TitleKey = "Title";
 const QString EntryAttributes::UserNameKey = "UserName";
 const QString EntryAttributes::PasswordKey = "Password";
 const QString EntryAttributes::URLKey = "URL";
 const QString EntryAttributes::NotesKey = "Notes";
-const QStringList EntryAttributes::DefaultAttributes(QStringList()
-                                                     << TitleKey << UserNameKey << PasswordKey << URLKey << NotesKey);
-
-const QString EntryAttributes::WantedFieldGroupName = "WantedField";
-const QString EntryAttributes::SearchInGroupName = "SearchIn";
-const QString EntryAttributes::SearchTextGroupName = "SearchText";
-
-const QString EntryAttributes::RememberCmdExecAttr = "_EXEC_CMD";
+const QStringList EntryAttributes::DefaultAttributes(QStringList() << TitleKey << UserNameKey
+                                                     << PasswordKey << URLKey << NotesKey);
 
 EntryAttributes::EntryAttributes(QObject* parent)
     : QObject(parent)
@@ -47,10 +38,10 @@ QList<QString> EntryAttributes::keys() const
 
 bool EntryAttributes::hasKey(const QString& key) const
 {
-    return m_attributes.contains(key);
+    return m_attributes.keys().contains(key);
 }
 
-QList<QString> EntryAttributes::customKeys() const
+QList<QString> EntryAttributes::customKeys()
 {
     QList<QString> customKeys;
     const QList<QString> keyList = keys();
@@ -67,39 +58,14 @@ QString EntryAttributes::value(const QString& key) const
     return m_attributes.value(key);
 }
 
-QList<QString> EntryAttributes::values(const QList<QString>& keys) const
-{
-    QList<QString> values;
-    for (const QString& key : keys) {
-        values.append(m_attributes.value(key));
-    }
-    return values;
-}
-
-bool EntryAttributes::contains(const QString& key) const
+bool EntryAttributes::contains(const QString &key) const
 {
     return m_attributes.contains(key);
-}
-
-bool EntryAttributes::containsValue(const QString& value) const
-{
-    return asConst(m_attributes).values().contains(value);
 }
 
 bool EntryAttributes::isProtected(const QString& key) const
 {
     return m_protectedAttributes.contains(key);
-}
-
-bool EntryAttributes::isReference(const QString& key) const
-{
-    if (!m_attributes.contains(key)) {
-        Q_ASSERT(false);
-        return false;
-    }
-
-    const QString data = value(key);
-    return matchReference(data).hasMatch();
 }
 
 void EntryAttributes::set(const QString& key, const QString& value, bool protect)
@@ -111,7 +77,7 @@ void EntryAttributes::set(const QString& key, const QString& value, bool protect
     bool defaultAttribute = isDefaultAttribute(key);
 
     if (addAttribute && !defaultAttribute) {
-        emit aboutToBeAdded(key);
+        Q_EMIT aboutToBeAdded(key);
     }
 
     if (addAttribute || changeValue) {
@@ -124,20 +90,23 @@ void EntryAttributes::set(const QString& key, const QString& value, bool protect
             emitModified = true;
         }
         m_protectedAttributes.insert(key);
-    } else if (m_protectedAttributes.remove(key)) {
+    }
+    else if (m_protectedAttributes.remove(key)) {
         emitModified = true;
     }
 
     if (emitModified) {
-        emit entryAttributesModified();
+        Q_EMIT modified();
     }
 
     if (defaultAttribute && changeValue) {
-        emit defaultKeyModified();
-    } else if (addAttribute) {
-        emit added(key);
-    } else if (emitModified) {
-        emit customKeyModified(key);
+        Q_EMIT defaultKeyModified();
+    }
+    else if (addAttribute) {
+        Q_EMIT added(key);
+    }
+    else if (emitModified) {
+        Q_EMIT customKeyModified(key);
     }
 }
 
@@ -146,16 +115,17 @@ void EntryAttributes::remove(const QString& key)
     Q_ASSERT(!isDefaultAttribute(key));
 
     if (!m_attributes.contains(key)) {
+        Q_ASSERT(false);
         return;
     }
 
-    emit aboutToBeRemoved(key);
+    Q_EMIT aboutToBeRemoved(key);
 
     m_attributes.remove(key);
     m_protectedAttributes.remove(key);
 
-    emit removed(key);
-    emit entryAttributesModified();
+    Q_EMIT removed(key);
+    Q_EMIT modified();
 }
 
 void EntryAttributes::rename(const QString& oldKey, const QString& newKey)
@@ -176,7 +146,7 @@ void EntryAttributes::rename(const QString& oldKey, const QString& newKey)
     QString data = value(oldKey);
     bool protect = isProtected(oldKey);
 
-    emit aboutToRename(oldKey, newKey);
+    Q_EMIT aboutToRename(oldKey, newKey);
 
     m_attributes.remove(oldKey);
     m_attributes.insert(newKey, data);
@@ -185,8 +155,8 @@ void EntryAttributes::rename(const QString& oldKey, const QString& newKey)
         m_protectedAttributes.insert(newKey);
     }
 
-    emit entryAttributesModified();
-    emit renamed(oldKey, newKey);
+    Q_EMIT modified();
+    Q_EMIT renamed(oldKey, newKey);
 }
 
 void EntryAttributes::copyCustomKeysFrom(const EntryAttributes* other)
@@ -195,7 +165,7 @@ void EntryAttributes::copyCustomKeysFrom(const EntryAttributes* other)
         return;
     }
 
-    emit aboutToBeReset();
+    Q_EMIT aboutToBeReset();
 
     // remove all non-default keys
     const QList<QString> keyList = keys();
@@ -216,8 +186,8 @@ void EntryAttributes::copyCustomKeysFrom(const EntryAttributes* other)
         }
     }
 
-    emit reset();
-    emit entryAttributesModified();
+    Q_EMIT reset();
+    Q_EMIT modified();
 }
 
 bool EntryAttributes::areCustomKeysDifferent(const EntryAttributes* other)
@@ -244,56 +214,31 @@ bool EntryAttributes::areCustomKeysDifferent(const EntryAttributes* other)
 void EntryAttributes::copyDataFrom(const EntryAttributes* other)
 {
     if (*this != *other) {
-        emit aboutToBeReset();
+        Q_EMIT aboutToBeReset();
 
         m_attributes = other->m_attributes;
         m_protectedAttributes = other->m_protectedAttributes;
 
-        emit reset();
-        emit entryAttributesModified();
+        Q_EMIT reset();
+        Q_EMIT modified();
     }
-}
-
-QUuid EntryAttributes::referenceUuid(const QString& key) const
-{
-    if (!m_attributes.contains(key)) {
-        Q_ASSERT(false);
-        return {};
-    }
-
-    auto match = matchReference(value(key));
-    if (match.hasMatch()) {
-        const QString uuid = match.captured("SearchText");
-        if (!uuid.isEmpty()) {
-            return QUuid::fromRfc4122(QByteArray::fromHex(uuid.toLatin1()));
-        }
-    }
-
-    return {};
 }
 
 bool EntryAttributes::operator==(const EntryAttributes& other) const
 {
-    return (m_attributes == other.m_attributes && m_protectedAttributes == other.m_protectedAttributes);
+    return (m_attributes == other.m_attributes
+            && m_protectedAttributes == other.m_protectedAttributes);
 }
 
 bool EntryAttributes::operator!=(const EntryAttributes& other) const
 {
-    return (m_attributes != other.m_attributes || m_protectedAttributes != other.m_protectedAttributes);
-}
-
-QRegularExpressionMatch EntryAttributes::matchReference(const QString& text)
-{
-    static QRegularExpression referenceRegExp(
-        "\\{REF:(?<WantedField>[TUPANI])@(?<SearchIn>[TUPANIO]):(?<SearchText>[^}]+)\\}",
-        QRegularExpression::CaseInsensitiveOption);
-
-    return referenceRegExp.match(text);
+    return (m_attributes != other.m_attributes
+            || m_protectedAttributes != other.m_protectedAttributes);
 }
 
 void EntryAttributes::clear()
 {
-    emit aboutToBeReset();
+    Q_EMIT aboutToBeReset();
 
     m_attributes.clear();
     m_protectedAttributes.clear();
@@ -302,15 +247,18 @@ void EntryAttributes::clear()
         m_attributes.insert(key, "");
     }
 
-    emit reset();
-    emit entryAttributesModified();
+    Q_EMIT reset();
+    Q_EMIT modified();
 }
 
-int EntryAttributes::attributesSize() const
+int EntryAttributes::attributesSize()
 {
     int size = 0;
-    for (auto it = m_attributes.constBegin(); it != m_attributes.constEnd(); ++it) {
-        size += it.key().toUtf8().size() + it.value().toUtf8().size();
+
+    QMapIterator<QString, QString> i(m_attributes);
+    while (i.hasNext()) {
+        i.next();
+        size += i.value().toUtf8().size();
     }
     return size;
 }

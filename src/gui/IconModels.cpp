@@ -17,8 +17,6 @@
 
 #include "IconModels.h"
 
-#include <QUuid>
-
 #include "core/DatabaseIcons.h"
 
 DefaultIconModel::DefaultIconModel(QObject* parent)
@@ -29,8 +27,9 @@ DefaultIconModel::DefaultIconModel(QObject* parent)
 int DefaultIconModel::rowCount(const QModelIndex& parent) const
 {
     if (!parent.isValid()) {
-        return databaseIcons()->count();
-    } else {
+        return DatabaseIcons::IconCount;
+    }
+    else {
         return 0;
     }
 }
@@ -41,10 +40,10 @@ QVariant DefaultIconModel::data(const QModelIndex& index, int role) const
         return QVariant();
     }
 
-    Q_ASSERT(index.row() < databaseIcons()->count());
+    Q_ASSERT(index.row() < DatabaseIcons::IconCount);
 
     if (role == Qt::DecorationRole) {
-        return databaseIcons()->icon(index.row(), IconSize::Medium);
+        return databaseIcons()->iconPixmap(index.row());
     }
 
     return QVariant();
@@ -55,7 +54,7 @@ CustomIconModel::CustomIconModel(QObject* parent)
 {
 }
 
-void CustomIconModel::setIcons(const QHash<QUuid, QPixmap>& icons, const QList<QUuid>& iconsOrder)
+void CustomIconModel::setIcons(const QHash<Uuid, QPixmap>& icons, const QList<Uuid>& iconsOrder)
 {
     beginResetModel();
 
@@ -70,7 +69,8 @@ int CustomIconModel::rowCount(const QModelIndex& parent) const
 {
     if (!parent.isValid()) {
         return m_icons.size();
-    } else {
+    }
+    else {
         return 0;
     }
 }
@@ -82,25 +82,27 @@ QVariant CustomIconModel::data(const QModelIndex& index, int role) const
     }
 
     if (role == Qt::DecorationRole) {
-        QUuid uuid = uuidFromIndex(index);
+        Uuid uuid = uuidFromIndex(index);
         return m_icons.value(uuid);
     }
 
     return QVariant();
 }
 
-QUuid CustomIconModel::uuidFromIndex(const QModelIndex& index) const
+Uuid CustomIconModel::uuidFromIndex(const QModelIndex& index) const
 {
     Q_ASSERT(index.isValid());
 
     return m_iconsOrder.value(index.row());
 }
 
-QModelIndex CustomIconModel::indexFromUuid(const QUuid& uuid) const
+QModelIndex CustomIconModel::indexFromUuid(const Uuid& uuid) const
 {
     int idx = m_iconsOrder.indexOf(uuid);
     if (idx > -1) {
         return index(idx, 0);
     }
-    return {};
+    else {
+        return QModelIndex();
+    }
 }

@@ -19,7 +19,6 @@
 #define KEEPASSX_AUTOTYPEACTION_H
 
 #include <QChar>
-#include <QObject>
 #include <Qt>
 
 #include "core/Global.h"
@@ -29,17 +28,17 @@ class AutoTypeExecutor;
 class KEEPASSX_EXPORT AutoTypeAction
 {
 public:
+    virtual ~AutoTypeAction() {}
     virtual AutoTypeAction* clone() = 0;
     virtual void accept(AutoTypeExecutor* executor) = 0;
-    virtual ~AutoTypeAction();
 };
 
 class KEEPASSX_EXPORT AutoTypeChar : public AutoTypeAction
 {
 public:
     explicit AutoTypeChar(const QChar& character);
-    AutoTypeAction* clone() override;
-    void accept(AutoTypeExecutor* executor) override;
+    AutoTypeAction* clone();
+    void accept(AutoTypeExecutor* executor);
 
     const QChar character;
 };
@@ -48,8 +47,8 @@ class KEEPASSX_EXPORT AutoTypeKey : public AutoTypeAction
 {
 public:
     explicit AutoTypeKey(Qt::Key key);
-    AutoTypeAction* clone() override;
-    void accept(AutoTypeExecutor* executor) override;
+    AutoTypeAction* clone();
+    void accept(AutoTypeExecutor* executor);
 
     const Qt::Key key;
 };
@@ -58,8 +57,8 @@ class KEEPASSX_EXPORT AutoTypeDelay : public AutoTypeAction
 {
 public:
     explicit AutoTypeDelay(int delayMs);
-    AutoTypeAction* clone() override;
-    void accept(AutoTypeExecutor* executor) override;
+    AutoTypeAction* clone();
+    void accept(AutoTypeExecutor* executor);
 
     const int delayMs;
 };
@@ -68,16 +67,14 @@ class KEEPASSX_EXPORT AutoTypeClearField : public AutoTypeAction
 {
 public:
     AutoTypeClearField();
-    AutoTypeAction* clone() override;
-    void accept(AutoTypeExecutor* executor) override;
+    AutoTypeAction* clone();
+    void accept(AutoTypeExecutor* executor);
 };
 
 class KEEPASSX_EXPORT AutoTypeExecutor
 {
 public:
-    virtual ~AutoTypeExecutor()
-    {
-    }
+    virtual ~AutoTypeExecutor() {}
     virtual void execChar(AutoTypeChar* action) = 0;
     virtual void execKey(AutoTypeKey* action) = 0;
     virtual void execDelay(AutoTypeDelay* action);

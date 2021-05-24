@@ -37,7 +37,6 @@ public:
 
     void setEntries(const QList<Entry*>& entries);
     void clear();
-    void clearDeletedEntries();
     QList<Entry*> deletedEntries();
     void deleteIndex(QModelIndex index);
     void deleteAll();
